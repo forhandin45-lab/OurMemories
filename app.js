@@ -667,7 +667,7 @@ function renderPoems() {
 
         list.innerHTML = `
             <div class="empty-state">
-                Belum ada sajak.
+                
             </div>
         `;
 
