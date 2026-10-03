@@ -1,4 +1,4 @@
-/* 
+/*
    RUANG KENANGAN
    app.js
 
@@ -7,14 +7,14 @@
    - Pertanyaan kenangan acak
    - Supabase foto/video
    - Sajak
-   - Kalender
+   - Kalender online Supabase
    - Floating calendar
- */
+*/
 
 
 /* 
    SUPABASE CONFIG
- */
+    */
 
 const SUPABASE_URL = (
     window.SUPABASE_URL ||
@@ -29,18 +29,19 @@ const SUPABASE_PUBLISHABLE_KEY =
 
 const SUPABASE_TABLE = "memories";
 const SUPABASE_BUCKET = "memories";
+const SUPABASE_CALENDAR_TABLE = "calendar_events";
 
 
 /* 
    PASSWORD
- */
+    */
 
 const PASSWORD = "kenangan";
 
 
 /* 
    HELPER
- */
+    */
 
 function $(id) {
     return document.getElementById(id);
@@ -48,25 +49,21 @@ function $(id) {
 
 
 function today() {
-
     const d = new Date();
 
     const year = d.getFullYear();
 
     const month =
-        String(d.getMonth() + 1)
-            .padStart(2, "0");
+        String(d.getMonth() + 1).padStart(2, "0");
 
     const day =
-        String(d.getDate())
-            .padStart(2, "0");
+        String(d.getDate()).padStart(2, "0");
 
     return `${year}-${month}-${day}`;
 }
 
 
 function uid() {
-
     return (
         Date.now().toString(36) +
         Math.random().toString(36).slice(2)
@@ -75,9 +72,7 @@ function uid() {
 
 
 function load(key) {
-
     try {
-
         const value =
             JSON.parse(
                 localStorage.getItem(key)
@@ -88,14 +83,12 @@ function load(key) {
             : [];
 
     } catch {
-
         return [];
     }
 }
 
 
 function save(key, value) {
-
     localStorage.setItem(
         key,
         JSON.stringify(value)
@@ -142,7 +135,7 @@ function esc(value) {
 
 /* 
    SUPABASE REQUEST
- */
+    */
 
 async function supabaseRequest(
     path,
@@ -232,13 +225,12 @@ async function supabaseRequest(
 
 /* 
    GLOBAL DATA
- */
+    */
 
 let poems =
     load("rk_poems");
 
-let events =
-    load("rk_events");
+let events = [];
 
 let media = [];
 
@@ -248,7 +240,7 @@ let currentCalendarDate =
 
 /* 
    PERTANYAAN KENANGAN
- */
+    */
 
 const MEMORY_QUESTIONS = [
 
@@ -279,7 +271,11 @@ const MEMORY_QUESTIONS = [
             "Apa makanan/minuman yang pertama kali kita makan bersama?",
 
         answers: [
-            "seblak"
+            "seblak",
+            "papeda",
+            "pempek",
+            "pisang",
+            "bolu pisang"
         ]
     },
 
@@ -319,8 +315,7 @@ const MEMORY_QUESTIONS = [
 ];
 
 
-let selectedMemoryQuestion =
-    null;
+let selectedMemoryQuestion = null;
 
 
 function normalizeAnswer(value) {
@@ -385,8 +380,12 @@ function showMemoryQuestion() {
 
 
     if (answerInput) {
+
         answerInput.value = "";
-        answerInput.focus();
+
+        setTimeout(() => {
+            answerInput.focus();
+        }, 50);
     }
 
 
@@ -402,18 +401,23 @@ function showMemoryQuestion() {
 function showLogin() {
 
     if ($("loginScreen")) {
+
         $("loginScreen")
             .classList
             .remove("hidden");
     }
 
+
     if ($("memoryQuestionScreen")) {
+
         $("memoryQuestionScreen")
             .classList
             .add("hidden");
     }
 
+
     if ($("app")) {
+
         $("app")
             .classList
             .add("hidden");
@@ -424,18 +428,23 @@ function showLogin() {
 function showApp() {
 
     if ($("loginScreen")) {
+
         $("loginScreen")
             .classList
             .add("hidden");
     }
 
+
     if ($("memoryQuestionScreen")) {
+
         $("memoryQuestionScreen")
             .classList
             .add("hidden");
     }
 
+
     if ($("app")) {
+
         $("app")
             .classList
             .remove("hidden");
@@ -446,13 +455,13 @@ function showApp() {
 
     loadMedia();
 
-    renderCalendar();
+    loadCalendarEvents();
 }
 
 
 /* 
    LOGIN
- */
+    */
 
 function checkLogin() {
 
@@ -464,15 +473,8 @@ function checkLogin() {
 
     if (loggedIn) {
 
-        /*
-           Password sudah pernah dimasukkan
-           pada sesi browser ini.
-
-           Tetap tampilkan pertanyaan kenangan
-           setiap kali halaman dibuka.
-        */
-
         if ($("loginScreen")) {
+
             $("loginScreen")
                 .classList
                 .add("hidden");
@@ -510,12 +512,14 @@ if ($("loginForm")) {
 
 
                     if ($("loginError")) {
+
                         $("loginError")
                             .textContent = "";
                     }
 
 
                     if ($("password")) {
+
                         $("password").value = "";
                     }
 
@@ -540,7 +544,7 @@ if ($("loginForm")) {
 
 /* 
    MEMORY QUESTION SUBMIT
- */
+    */
 
 if ($("memoryQuestionForm")) {
 
@@ -581,11 +585,14 @@ if ($("memoryQuestionForm")) {
                 if (valid) {
 
                     if ($("memoryQuestionError")) {
+
                         $("memoryQuestionError")
                             .textContent = "";
                     }
 
+
                     showApp();
+
 
                 } else {
 
@@ -609,7 +616,7 @@ if ($("memoryQuestionForm")) {
 
 /* 
    GANTI PERTANYAAN
- */
+    */
 
 if ($("changeQuestionBtn")) {
 
@@ -627,7 +634,7 @@ if ($("changeQuestionBtn")) {
 
 /* 
    LOGOUT
- */
+    */
 
 if ($("logoutBtn")) {
 
@@ -649,7 +656,7 @@ if ($("logoutBtn")) {
 
 /* 
    PUISI / SAJAK
- */
+    */
 
 function renderPoems() {
 
@@ -752,7 +759,6 @@ function renderPoems() {
 
                     }
                 );
-
             }
         );
 
@@ -772,15 +778,12 @@ function renderPoems() {
 
                     }
                 );
-
             }
         );
 }
 
 
-function openPoemModal(
-    id = null
-) {
+function openPoemModal(id = null) {
 
     const modal =
         $("poemModal");
@@ -886,14 +889,17 @@ if ($("poemForm")) {
                 const id =
                     $("poemId")?.value || "";
 
+
                 const date =
                     $("poemDate")?.value ||
                     today();
+
 
                 const title =
                     $("poemTitle")
                         ?.value
                         .trim() || "";
+
 
                 const body =
                     $("poemBody")
@@ -930,6 +936,7 @@ if ($("poemForm")) {
                             date,
                             title,
                             body
+
                         };
                     }
 
@@ -940,10 +947,9 @@ if ($("poemForm")) {
                         id: uid(),
 
                         date,
-
                         title,
-
                         body
+
                     });
                 }
 
@@ -1009,7 +1015,7 @@ function deletePoem(id) {
 
 /* 
    SUPABASE MEDIA
- */
+    */
 
 async function loadMedia() {
 
@@ -1060,19 +1066,13 @@ async function loadMedia() {
         if (list) {
 
             list.innerHTML = `
-
                 <div class="empty-state">
-
                     Gagal memuat foto/video.
-
                     <br><br>
-
                     <small>
                         ${esc(error.message)}
                     </small>
-
                 </div>
-
             `;
         }
     }
@@ -1081,7 +1081,7 @@ async function loadMedia() {
 
 /* 
    MEDIA URL
- */
+    */
 
 function getMediaUrl(filePath) {
 
@@ -1101,7 +1101,7 @@ function getMediaUrl(filePath) {
 
 /* 
    RENDER MEDIA
- */
+    */
 
 function renderMedia() {
 
@@ -1140,6 +1140,7 @@ function renderMedia() {
                     const isVideo =
                         item.media_type ===
                             "video" ||
+
                         String(
                             item.media_type ||
                             ""
@@ -1221,10 +1222,8 @@ function renderMedia() {
                                                         {
                                                             day:
                                                                 "numeric",
-
                                                             month:
                                                                 "long",
-
                                                             year:
                                                                 "numeric"
                                                         }
@@ -1274,7 +1273,6 @@ function renderMedia() {
 
                     }
                 );
-
             }
         );
 }
@@ -1282,7 +1280,7 @@ function renderMedia() {
 
 /* 
    UPLOAD MEDIA
- */
+    */
 
 if ($("mediaInput")) {
 
@@ -1333,14 +1331,11 @@ async function uploadMedia(files) {
         for (const file of files) {
 
 
-            /* 
-               VALIDASI TIPE
-             */
-
             if (
                 !file.type.startsWith(
                     "image/"
                 ) &&
+
                 !file.type.startsWith(
                     "video/"
                 )
@@ -1353,10 +1348,6 @@ async function uploadMedia(files) {
                 continue;
             }
 
-
-            /* 
-               BATAS 100 MB
-             */
 
             const maxSize =
                 100 * 1024 * 1024;
@@ -1371,10 +1362,6 @@ async function uploadMedia(files) {
                 continue;
             }
 
-
-            /* 
-               NAMA FILE AMAN
-             */
 
             const originalName =
                 file.name ||
@@ -1431,10 +1418,6 @@ async function uploadMedia(files) {
             const filePath =
                 fileName;
 
-
-            /* 
-               UPLOAD STORAGE
-             */
 
             const uploadUrl =
                 `${SUPABASE_URL}` +
@@ -1501,10 +1484,6 @@ async function uploadMedia(files) {
             }
 
 
-            /* 
-               SIMPAN DATABASE
-             */
-
             const record = {
 
                 title:
@@ -1536,6 +1515,7 @@ async function uploadMedia(files) {
                         method: "POST",
 
                         headers: {
+
                             Prefer:
                                 "return=minimal"
                         },
@@ -1550,12 +1530,6 @@ async function uploadMedia(files) {
 
             } catch (databaseError) {
 
-                /*
-                   Jika Storage berhasil tetapi
-                   database gagal, coba hapus file
-                   agar tidak meninggalkan file yatim.
-                */
-
                 try {
 
                     await fetch(
@@ -1563,10 +1537,12 @@ async function uploadMedia(files) {
                         `/storage/v1/object/` +
                         `${SUPABASE_BUCKET}/` +
                         encodeURI(filePath),
+
                         {
                             method: "DELETE",
 
                             headers: {
+
                                 apikey:
                                     SUPABASE_PUBLISHABLE_KEY,
 
@@ -1577,7 +1553,6 @@ async function uploadMedia(files) {
                     );
 
                 } catch {
-
                     // Abaikan error cleanup.
                 }
 
@@ -1629,7 +1604,7 @@ async function uploadMedia(files) {
 
 /* 
    DELETE MEDIA
- */
+    */
 
 async function deleteMedia(id) {
 
@@ -1661,10 +1636,6 @@ async function deleteMedia(id) {
 
 
     try {
-
-        /* 
-           HAPUS STORAGE
-         */
 
         const deleteUrl =
             `${SUPABASE_URL}` +
@@ -1724,17 +1695,15 @@ async function deleteMedia(id) {
         }
 
 
-        /* 
-           HAPUS DATABASE
-         */
-
         await supabaseRequest(
             `/rest/v1/${SUPABASE_TABLE}` +
             `?id=eq.${encodeURIComponent(id)}`,
+
             {
                 method: "DELETE",
 
                 headers: {
+
                     Prefer:
                         "return=minimal"
                 }
@@ -1768,7 +1737,7 @@ async function deleteMedia(id) {
 
 /* 
    KALENDER
- */
+    */
 
 const EVENT_TYPES = {
 
@@ -1802,8 +1771,85 @@ function getEventTypeName(type) {
 
 
 /* 
+   LOAD CALENDAR DARI SUPABASE
+    */
+
+async function loadCalendarEvents() {
+
+    const list =
+        $("eventList");
+
+
+    if (list) {
+
+        list.innerHTML = `
+            <div class="empty-state">
+                Memuat jadwal...
+            </div>
+        `;
+    }
+
+
+    try {
+
+        const query =
+            `/rest/v1/${SUPABASE_CALENDAR_TABLE}` +
+            `?select=id,date,type,title,note,created_at` +
+            `&order=date.asc,created_at.asc`;
+
+
+        const data =
+            await supabaseRequest(
+                query
+            );
+
+
+        events =
+            Array.isArray(data)
+                ? data
+                : [];
+
+
+        renderCalendar();
+
+
+    } catch (error) {
+
+        console.error(
+            "Gagal memuat kalender:",
+            error
+        );
+
+
+        events = [];
+
+
+        renderCalendar();
+
+
+        if (list) {
+
+            list.innerHTML = `
+                <div class="empty-state">
+
+                    Gagal memuat kalender.
+
+                    <br><br>
+
+                    <small>
+                        ${esc(error.message)}
+                    </small>
+
+                </div>
+            `;
+        }
+    }
+}
+
+
+/* 
    RENDER CALENDAR
- */
+    */
 
 function renderCalendar() {
 
@@ -1905,7 +1951,8 @@ function renderCalendar() {
         const dayEvents =
             events.filter(
                 event =>
-                    event.date ===
+                    String(event.date)
+                        .slice(0, 10) ===
                     dateString
             );
 
@@ -1939,6 +1986,7 @@ function renderCalendar() {
                     ${day}
                 </div>
 
+
                 <div class="calendar-events">
 
                     ${dayEvents
@@ -1954,12 +2002,14 @@ function renderCalendar() {
                                         )
                                     )}"
                                 >
+
                                     ${esc(
                                         event.title ||
                                         getEventTypeName(
                                             event.type
                                         )
                                     )}
+
                                 </div>
 
                             `
@@ -1969,6 +2019,7 @@ function renderCalendar() {
                 </div>
 
             </div>
+
         `;
     }
 
@@ -1976,10 +2027,6 @@ function renderCalendar() {
     grid.innerHTML =
         html;
 
-
-    /* 
-       KLIK TANGGAL
-     */
 
     grid
         .querySelectorAll(
@@ -1998,7 +2045,6 @@ function renderCalendar() {
 
                     }
                 );
-
             }
         );
 
@@ -2009,7 +2055,7 @@ function renderCalendar() {
 
 /* 
    RENDER EVENT LIST
- */
+    */
 
 function renderEvents() {
 
@@ -2037,18 +2083,27 @@ function renderEvents() {
             .filter(
                 event => {
 
+                    if (!event.date) {
+                        return false;
+                    }
+
+
                     const date =
                         new Date(
-                            event.date +
+                            String(event.date)
+                                .slice(0, 10) +
                             "T00:00:00"
                         );
 
 
                     return (
+
                         date.getFullYear() ===
                             year &&
+
                         date.getMonth() ===
                             month
+
                     );
                 }
             )
@@ -2064,11 +2119,9 @@ function renderEvents() {
     if (!monthEvents.length) {
 
         list.innerHTML = `
-
             <div class="empty-state">
                 Belum ada event bulan ini.
             </div>
-
         `;
 
         return;
@@ -2085,29 +2138,39 @@ function renderEvents() {
                         <div class="event-info">
 
                             <div class="event-date">
+
                                 ${esc(
                                     fmt(
-                                        event.date
+                                        String(event.date)
+                                            .slice(0, 10)
                                     )
                                 )}
+
                             </div>
 
+
                             <strong>
+
                                 ${esc(
                                     event.title ||
                                     getEventTypeName(
                                         event.type
                                     )
                                 )}
+
                             </strong>
 
+
                             <div class="event-type">
+
                                 ${esc(
                                     getEventTypeName(
                                         event.type
                                     )
                                 )}
+
                             </div>
+
 
                             ${
                                 event.note
@@ -2131,19 +2194,16 @@ function renderEvents() {
                             <button
                                 type="button"
                                 class="btn edit-event"
-                                data-id="${esc(
-                                    event.id
-                                )}"
+                                data-id="${esc(event.id)}"
                             >
                                 Edit
                             </button>
 
+
                             <button
                                 type="button"
                                 class="btn danger delete-event"
-                                data-id="${esc(
-                                    event.id
-                                )}"
+                                data-id="${esc(event.id)}"
                             >
                                 Hapus
                             </button>
@@ -2174,7 +2234,6 @@ function renderEvents() {
 
                     }
                 );
-
             }
         );
 
@@ -2196,7 +2255,6 @@ function renderEvents() {
 
                     }
                 );
-
             }
         );
 }
@@ -2204,7 +2262,7 @@ function renderEvents() {
 
 /* 
    KALENDER NAVIGATION
- */
+    */
 
 if ($("prevMonth")) {
 
@@ -2250,11 +2308,9 @@ if ($("nextMonth")) {
 
 /* 
    EVENT MODAL
- */
+    */
 
-function openEventModal(
-    id = null
-) {
+function openEventModal(id = null) {
 
     const modal =
         $("eventModal");
@@ -2295,8 +2351,9 @@ function openEventModal(
     if ($("eventDate")) {
 
         $("eventDate").value =
-            item?.date ||
-            today();
+            item?.date
+                ? String(item.date).slice(0, 10)
+                : today();
     }
 
 
@@ -2332,26 +2389,20 @@ function openEventModal(
 
 /* 
    OPEN EVENT DARI TANGGAL KALENDER
- */
+    */
 
-function openEventModalForDate(
-    date
-) {
+function openEventModalForDate(date) {
 
     const existing =
         events.find(
             event =>
-                event.date ===
+                String(event.date)
+                    .slice(0, 10) ===
                 date
         );
 
 
     if (existing) {
-
-        /*
-           Kalau tanggal sudah memiliki event,
-           buka event tersebut supaya mudah diedit.
-        */
 
         openEventModal(
             existing.id
@@ -2379,29 +2430,34 @@ function openEventModalForDate(
 
 
     if ($("eventId")) {
+
         $("eventId").value = "";
     }
 
 
     if ($("eventDate")) {
+
         $("eventDate").value =
             date;
     }
 
 
     if ($("eventType")) {
+
         $("eventType").value =
             "lainnya";
     }
 
 
     if ($("eventTitle")) {
+
         $("eventTitle").value =
             "";
     }
 
 
     if ($("eventNote")) {
+
         $("eventNote").value =
             "";
     }
@@ -2426,7 +2482,7 @@ function closeEventModal() {
 
 /* 
    ADD EVENT
- */
+    */
 
 if ($("addEventBtn")) {
 
@@ -2444,14 +2500,14 @@ if ($("addEventBtn")) {
 
 /* 
    EVENT FORM
- */
+    */
 
 if ($("eventForm")) {
 
     $("eventForm")
         .addEventListener(
             "submit",
-            function (event) {
+            async function (event) {
 
                 event.preventDefault();
 
@@ -2507,46 +2563,21 @@ if ($("eventForm")) {
                 }
 
 
-                if (id) {
-
-                    const index =
-                        events.findIndex(
-                            item =>
-                                String(
-                                    item.id
-                                ) ===
-                                String(id)
+                const submitButton =
+                    $("eventForm")
+                        .querySelector(
+                            'button[type="submit"]'
                         );
 
 
-                    if (index !== -1) {
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
 
-                        events[index] = {
 
-                            ...events[index],
+                try {
 
-                            /*
-                               Tanggal ikut diperbarui.
-                               Jadi kalau salah tanggal,
-                               bisa diganti lewat Edit.
-                            */
-
-                            date,
-
-                            type,
-
-                            title,
-
-                            note
-                        };
-                    }
-
-                } else {
-
-                    events.push({
-
-                        id:
-                            uid(),
+                    const record = {
 
                         date,
 
@@ -2555,19 +2586,107 @@ if ($("eventForm")) {
                         title,
 
                         note
-                    });
+
+                    };
+
+
+                    /* -----------------------------------------
+                       EDIT EVENT
+                       ----------------------------------------- */
+
+                    if (id) {
+
+                        await supabaseRequest(
+
+                            `/rest/v1/${SUPABASE_CALENDAR_TABLE}` +
+                            `?id=eq.${encodeURIComponent(id)}`,
+
+                            {
+
+                                method:
+                                    "PATCH",
+
+                                headers: {
+
+                                    Prefer:
+                                        "return=minimal"
+
+                                },
+
+                                body:
+                                    JSON.stringify(
+                                        record
+                                    )
+                            }
+                        );
+
+
+                    }
+
+                    /* -----------------------------------------
+                       TAMBAH EVENT
+                       ----------------------------------------- */
+
+                    else {
+
+                        await supabaseRequest(
+
+                            `/rest/v1/${SUPABASE_CALENDAR_TABLE}`,
+
+                            {
+
+                                method:
+                                    "POST",
+
+                                headers: {
+
+                                    Prefer:
+                                        "return=representation"
+
+                                },
+
+                                body:
+                                    JSON.stringify(
+                                        record
+                                    )
+                            }
+                        );
+                    }
+
+
+                    closeEventModal();
+
+
+                    await loadCalendarEvents();
+
+
+                    alert(
+                        id
+                            ? "Jadwal berhasil diperbarui."
+                            : "Jadwal berhasil disimpan."
+                    );
+
+
+                } catch (error) {
+
+                    console.error(
+                        "Gagal menyimpan event:",
+                        error
+                    );
+
+
+                    alert(
+                        "Gagal menyimpan jadwal.\n\n" +
+                        error.message
+                    );
+
+
+                } finally {
+
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
                 }
-
-
-                save(
-                    "rk_events",
-                    events
-                );
-
-
-                renderCalendar();
-
-                closeEventModal();
 
             }
         );
@@ -2576,9 +2695,9 @@ if ($("eventForm")) {
 
 /* 
    DELETE EVENT
- */
+    */
 
-function deleteEvent(id) {
+async function deleteEvent(id) {
 
     const item =
         events.find(
@@ -2604,27 +2723,55 @@ function deleteEvent(id) {
     }
 
 
-    events =
-        events.filter(
-            event =>
-                String(event.id) !==
-                String(id)
+    try {
+
+        await supabaseRequest(
+
+            `/rest/v1/${SUPABASE_CALENDAR_TABLE}` +
+            `?id=eq.${encodeURIComponent(id)}`,
+
+            {
+
+                method:
+                    "DELETE",
+
+                headers: {
+
+                    Prefer:
+                        "return=minimal"
+
+                }
+            }
         );
 
 
-    save(
-        "rk_events",
-        events
-    );
+        await loadCalendarEvents();
 
 
-    renderCalendar();
+        alert(
+            "Jadwal berhasil dihapus."
+        );
+
+
+    } catch (error) {
+
+        console.error(
+            "Gagal menghapus event:",
+            error
+        );
+
+
+        alert(
+            "Gagal menghapus jadwal.\n\n" +
+            error.message
+        );
+    }
 }
 
 
 /* 
    MODAL CLOSE BUTTON
- */
+    */
 
 document
     .querySelectorAll(
@@ -2652,14 +2799,13 @@ document
 
                 }
             );
-
         }
     );
 
 
 /* 
    CLOSE MODAL BACKDROP
- */
+    */
 
 document
     .querySelectorAll(".modal")
@@ -2682,14 +2828,13 @@ document
 
                 }
             );
-
         }
     );
 
 
 /* 
    ESC CLOSE MODAL
- */
+    */
 
 document.addEventListener(
     "keydown",
@@ -2723,7 +2868,7 @@ document.addEventListener(
 
 /* 
    FLOATING CALENDAR
- */
+    */
 
 if ($("privateCalendarButton")) {
 
@@ -2742,11 +2887,13 @@ if ($("privateCalendarButton")) {
 
 
                 calendar.scrollIntoView({
+
                     behavior:
                         "smooth",
 
                     block:
                         "start"
+
                 });
 
             }
@@ -2756,7 +2903,7 @@ if ($("privateCalendarButton")) {
 
 /* 
    START APPLICATION
- */
+    */
 
 document.addEventListener(
     "DOMContentLoaded",
