@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Ruang Kenangan</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- 
+         LOGIN
+    = -->
+
+    <div id="loginScreen" class="login-screen">
+
+        <div class="login-card">
+
+            <div class="login-heart">
+                ♡
+            </div>
+
+            <p class="login-label">
+                RUANG PRIBADI
+            </p>
+
+            <h1>
+                Ruang Kenangan
+            </h1>
+
+            <p class="login-description">
+                Tempat menyimpan kata-kata,
+                foto, video, dan tanggal
+                yang ingin selalu diingat.
+            </p>
+
+            <form id="loginForm">
+
+                <label for="password">
+                    Kata sandi
+                </label>
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Masukkan kata sandi"
+                    autocomplete="current-password"
+                    required
+                >
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    Masuk
+                </button>
+
+                <p
+                    id="loginError"
+                    class="login-error"
+                ></p>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- 
+         PERTANYAAN KENANGAN
+    = -->
+
+    <div
+        id="memoryQuestionScreen"
+        class="memory-question-screen hidden"
+    >
+
+        <div class="memory-question-card">
+
+            <div class="question-heart">
+                ♡
+            </div>
+
+            <p class="section-label">
+                SEBELUM MASUK
+            </p>
+
+            <h1>
+                Satu pertanyaan kecil...
+            </h1>
+
+            <p class="question-description">
+                Coba ingat salah satu hal
+                tentang kita.
+            </p>
+
+            <div class="question-box">
+
+                <p id="memoryQuestion">
+                    Pertanyaan akan muncul di sini.
+                </p>
+
+            </div>
+
+            <form id="memoryQuestionForm">
+
+                <input
+                    type="text"
+                    id="memoryAnswer"
+                    placeholder="Tulis jawabanmu..."
+                    autocomplete="off"
+                    required
+                >
+
+                <button
+                    type="submit"
+                    class="primary-button"
+                >
+                    Masuk ke Ruang Kenangan
+                </button>
+
+                <p
+                    id="memoryQuestionError"
+                    class="question-error"
+                ></p>
+
+            </form>
+
+            <button
+                type="button"
+                id="changeQuestionBtn"
+                class="question-change-button"
+            >
+                Ganti pertanyaan
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- 
+         APLIKASI UTAMA
+    = -->
+
+    <div
+        id="app"
+        class="app hidden"
+    >
+
+        <!-- 
+             NAVBAR
+        = -->
+
+        <header class="topbar">
+
+            <div class="brand">
+
+                <div class="brand-icon">
+                    ♡
+                </div>
+
+                <div class="brand-text">
+
+                    <strong>
+                        Ruang Kenangan
+                    </strong>
+
+                    <span>
+                        catatan kecil tentang kita
+                    </span>
+
+                </div>
+
+            </div>
+
+            <button
+                id="logoutBtn"
+                class="logout-button"
+                type="button"
+            >
+                Keluar
+            </button>
+
+        </header>
+
+
+        <!-- 
+             KONTEN
+        = -->
+
+        <main class="main-container">
+
+            <!-- HERO -->
+
+            <section class="hero-section">
+
+                <p class="section-label">
+                    RUANG KECIL UNTUK CERITA
+                </p>
+
+                <h1>
+                    Beberapa hal
+                    <br>
+                    layak <em>disimpan.</em>
+                </h1>
+
+                <p class="hero-description">
+                    Tuliskan apa yang kamu rasakan,
+                    abadikan momen yang berarti,
+                    dan tandai tanggal-tanggal
+                    yang tidak ingin kamu lupakan.
+                </p>
+
+            </section>
+
+
+            <!-- 
+                 SAJAK
+            = -->
+
+            <section
+                id="sajak"
+                class="content-section"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <p class="section-label">
+                            TULISAN
+                        </p>
+
+                        <h2>
+                            Tulis disini
+                        
+                        </h2>
+
+                    </div>
+
+                    <button
+                        id="addPoemBtn"
+                        class="primary-button small-button"
+                        type="button"
+                    >
+                        + Tambah 
+                    </button>
+
+                </div>
+
+                <div
+                    id="poemList"
+                    class="poem-list"
+                ></div>
+
+            </section>
+
+
+            <!-- 
+                 FOTO & VIDEO
+            = -->
+
+            <section
+                id="gallery"
+                class="content-section"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <p class="section-label">
+                            KENANGAN
+                        </p>
+
+                        <h2>
+                            Foto & Video
+                        </h2>
+
+                    </div>
+
+                    <label
+                        class="primary-button small-button upload-button"
+                    >
+
+                        + Tambah Media
+
+                        <input
+                            type="file"
+                            id="mediaInput"
+                            accept="image/*,video/*"
+                            multiple
+                        >
+
+                    </label>
+
+                </div>
+
+
+                <div
+                    id="mediaList"
+                    class="media-grid"
+                ></div>
+
+
+                <p class="information-text">
+                   
+                </p>
+
+            </section>
+
+
+            <!-- 
+                 KALENDER
+            = -->
+
+            <section
+                id="calendar"
+                class="content-section"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <p class="section-label">
+                            TANGGAL PENTING
+                        </p>
+
+                        <h2>
+                            Kalender
+                        </h2>
+
+                    </div>
+
+                    <button
+                        id="addEventBtn"
+                        class="primary-button small-button"
+                        type="button"
+                    >
+                        + Jadwal
+                    </button>
+
+                </div>
+
+
+                <div class="calendar-container">
+
+                    <div class="calendar-toolbar">
+
+                        <button
+                            id="prevMonth"
+                            class="calendar-arrow"
+                            type="button"
+                            aria-label="Bulan sebelumnya"
+                        >
+                            ‹
+                        </button>
+
+                        <h3 id="monthTitle">
+                            Januari 2026
+                        </h3>
+
+                        <button
+                            id="nextMonth"
+                            class="calendar-arrow"
+                            type="button"
+                            aria-label="Bulan berikutnya"
+                        >
+                            ›
+                        </button>
+
+                    </div>
+
+
+                    <div class="weekdays">
+
+                        <span>Min</span>
+                        <span>Sen</span>
+                        <span>Sel</span>
+                        <span>Rab</span>
+                        <span>Kam</span>
+                        <span>Jum</span>
+                        <span>Sab</span>
+
+                    </div>
+
+
+                    <div
+                        id="calendarGrid"
+                        class="calendar-grid"
+                    ></div>
+
+                </div>
+
+
+                <div
+                    id="eventList"
+                    class="event-list"
+                ></div>
+
+
+                <p class="information-text">
+                   
+                </p>
+
+            </section>
+
+        </main>
+
+
+        <!-- 
+             FOOTER
+        = -->
+
+        <footer class="footer">
+
+            <p>
+                ♡ Ruang Kenangan
+            </p>
+
+            <span>
+                tempat menyimpan hal-hal yang berarti
+            </span>
+
+        </footer>
+
+
+        <!-- 
+             FLOATING CALENDAR
+        = -->
+
+        <button
+            id="privateCalendarButton"
+            class="private-calendar-float"
+            type="button"
+            aria-label="Buka kalender pribadi"
+            title="Kalender pribadi"
+        >
+            🌸
+        </button>
+
+    </div>
+
+
+    <!-- 
+         MODAL SAJAK
+    = -->
+
+    <div
+        id="poemModal"
+        class="modal hidden"
+    >
+
+        <div class="modal-card">
+
+            <button
+                class="modal-close"
+                data-close-modal
+                type="button"
+                aria-label="Tutup"
+            >
+                ×
+            </button>
+
+            <p class="section-label">
+                
+            </p>
+
+            <h2 id="poemModalTitle">
+                Tambah 
+            </h2>
+
+            <form id="poemForm">
+
+                <input
+                    type="hidden"
+                    id="poemId"
+                >
+
+                <label for="poemDate">
+                    Tanggal dibuat
+                </label>
+
+                <input
+                    type="date"
+                    id="poemDate"
+                    required
+                >
+
+                <label for="poemTitle">
+                    Judul
+                </label>
+
+                <input
+                    type="text"
+                    id="poemTitle"
+                    maxlength="120"
+                    placeholder="Judul"
+                    required
+                >
+
+                <label for="poemBody">
+                    Isi 
+                </label>
+
+                <textarea
+                    id="poemBody"
+                    rows="10"
+                    placeholder="Tuliskan sesuatu..."
+                    required
+                ></textarea>
+
+                <button
+                    type="submit"
+                    class="primary-button full-button"
+                >
+                    Simpan 
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- 
+         MODAL KALENDER
+    = -->
+
+    <div
+        id="eventModal"
+        class="modal hidden"
+    >
+
+        <div class="modal-card">
+
+            <button
+                class="modal-close"
+                data-close-modal
+                type="button"
+                aria-label="Tutup"
+            >
+                ×
+            </button>
+
+            <p class="section-label">
+                KALENDER
+            </p>
+
+            <h2 id="eventModalTitle">
+                Tambah Jadwal
+            </h2>
+
+            <form id="eventForm">
+
+                <input
+                    type="hidden"
+                    id="eventId"
+                >
+
+                <label for="eventDate">
+                    Tanggal
+                </label>
+
+                <input
+                    type="date"
+                    id="eventDate"
+                    required
+                >
+
+                <label for="eventType">
+                    Jenis
+                </label>
+
+                <select id="eventType">
+
+                    <option value="haid">
+                        Haid
+                    </option>
+
+                    <option value="ketemu">
+                        Jadwal Ketemu
+                    </option>
+
+                    <option value="ulangtahun">
+                        Ulang Tahun
+                    </option>
+
+                    <option value="anniversary">
+                        Anniversary
+                    </option>
+
+                    <option value="penting">
+                        Tanggal Penting
+                    </option>
+
+                    <option value="lainnya">
+                        Lainnya
+                    </option>
+
+                </select>
+
+                <label for="eventTitle">
+                    Nama / Catatan
+                </label>
+
+                <input
+                    type="text"
+                    id="eventTitle"
+                    maxlength="120"
+                    placeholder="Contoh: makan bersama"
+                    required
+                >
+
+                <label for="eventNote">
+                    Detail
+                </label>
+
+                <textarea
+                    id="eventNote"
+                    rows="5"
+                    placeholder="Catatan tambahan (opsional)"
+                ></textarea>
+
+                <button
+                    type="submit"
+                    class="primary-button full-button"
+                >
+                    Simpan
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- 
+         SUPABASE
+    = -->
+
+    <script>
+        window.SUPABASE_URL =
+            "https://uankgacgaabogcelqcss.supabase.co";
+
+        window.SUPABASE_PUBLISHABLE_KEY =
+            "sb_publishable_qmO8suGGLsWfyr70fabqzw_nDuikRSv";
+    </script>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
