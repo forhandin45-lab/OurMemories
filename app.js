@@ -347,40 +347,35 @@ function chooseRandomMemoryQuestion() {
 
 
 function showMemoryQuestion() {
+    const loginScreen = $("loginScreen");
+    const screen = $("memoryQuestionScreen");
+    const questionElement = $("memoryQuestion");
+    const answerInput = $("memoryAnswer");
+    const error = $("memoryQuestionError");
 
-    const screen =
-        $("memoryQuestionScreen");
+    // Sembunyikan layar password
+    if (loginScreen) {
+        loginScreen.classList.add("hidden");
+    }
 
-    const questionElement =
-        $("memoryQuestion");
-
-    const answerInput =
-        $("memoryAnswer");
-
-    const error =
-        $("memoryQuestionError");
-
+    // Sembunyikan aplikasi utama
+    if ($("app")) {
+        $("app").classList.add("hidden");
+    }
 
     if (!screen || !questionElement) {
         return;
     }
 
-
-    const question =
-        chooseRandomMemoryQuestion();
-
+    const question = chooseRandomMemoryQuestion();
 
     if (!question) {
         return;
     }
 
-
-    questionElement.textContent =
-        question.question;
-
+    questionElement.textContent = question.question;
 
     if (answerInput) {
-
         answerInput.value = "";
 
         setTimeout(() => {
@@ -388,12 +383,11 @@ function showMemoryQuestion() {
         }, 50);
     }
 
-
     if (error) {
         error.textContent = "";
     }
 
-
+    // Tampilkan pertanyaan kenangan
     screen.classList.remove("hidden");
 }
 
