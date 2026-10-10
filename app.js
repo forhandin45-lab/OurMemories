@@ -1,13 +1,15 @@
 
 /*
 ==
- RUANG KENANGAN — APP.JS
+ RUANG KENANGAN — APP.JS LENGKAP
  Fitur:
  - Login dan pertanyaan kenangan acak
  - Sajak online dengan Supabase
  - Galeri foto/video online
+ - Foto bisa diklik untuk melihat ukuran besar
+ - Video langsung diputar di galeri
  - Kalender online Supabase
- - Edit dan hapus tulisan serta jadwal
+ - Tambah, edit, dan hapus sajak serta jadwal
  - Floating calendar
 ==
 */
@@ -20,9 +22,7 @@
 const SUPABASE_URL = (
     window.SUPABASE_URL ||
     "https://uankgacgaabogcelqcss.supabase.co"
-)
-    .replace(/\/+$/, "")
-    .replace(/\/rest\/v1\/?$/, "");
+).replace(/\/+$/, "").replace(/\/rest\/v1\/?$/, "");
 
 const SUPABASE_PUBLISHABLE_KEY =
     window.SUPABASE_PUBLISHABLE_KEY ||
@@ -55,10 +55,8 @@ function today() {
 }
 
 function uid() {
-    return (
-        Date.now().toString(36) +
-        Math.random().toString(36).slice(2)
-    );
+    return Date.now().toString(36) +
+        Math.random().toString(36).slice(2);
 }
 
 function fmt(dateString) {
@@ -68,9 +66,7 @@ function fmt(dateString) {
         String(dateString).slice(0, 10) + "T00:00:00"
     );
 
-    if (Number.isNaN(d.getTime())) {
-        return dateString;
-    }
+    if (Number.isNaN(d.getTime())) return dateString;
 
     return d.toLocaleDateString("id-ID", {
         day: "numeric",
@@ -98,18 +94,13 @@ async function supabaseRequest(path, options = {}) {
         ...(options.headers || {})
     };
 
-    const response = await fetch(
-        `${SUPABASE_URL}${path}`,
-        {
-            ...options,
-            headers
-        }
-    );
+    const response = await fetch(`${SUPABASE_URL}${path}`, {
+        ...options,
+        headers
+    });
 
     let data = null;
-
-    const contentType =
-        response.headers.get("content-type") || "";
+    const contentType = response.headers.get("content-type") || "";
 
     if (contentType.includes("application/json")) {
         data = await response.json();
@@ -146,9 +137,7 @@ async function supabaseRequest(path, options = {}) {
 let poems = [];
 let events = [];
 let media = [];
-
 let currentCalendarDate = new Date();
-
 let selectedMemoryQuestion = null;
 
 
@@ -158,8 +147,7 @@ let selectedMemoryQuestion = null;
 
 const MEMORY_QUESTIONS = [
     {
-        question:
-            "Kapan pertama kali kita bertemu setelah berpisah?",
+        question: "Kapan pertama kali kita bertemu setelah berpisah?",
         answers: [
             "27 maret 2026",
             "27/03/2026",
@@ -169,13 +157,11 @@ const MEMORY_QUESTIONS = [
         ]
     },
     {
-        question:
-            "Di mana pertama kali kita bertemu?",
+        question: "Di mana pertama kali kita bertemu?",
         answers: ["rumah"]
     },
     {
-        question:
-            "Apa makanan/minuman yang pertama kali kita makan bersama?",
+        question: "Apa makanan/minuman yang pertama kali kita makan bersama?",
         answers: [
             "seblak",
             "papeda",
@@ -185,8 +171,7 @@ const MEMORY_QUESTIONS = [
         ]
     },
     {
-        question:
-            "Siapa yang pertama kali menghubungi?",
+        question: "Siapa yang pertama kali menghubungi?",
         answers: [
             "parhan",
             "kamu",
@@ -194,8 +179,7 @@ const MEMORY_QUESTIONS = [
         ]
     },
     {
-        question:
-            "Makan apa yang pernah kita buat bersama?",
+        question: "Makan apa yang pernah kita buat bersama?",
         answers: [
             "seblak",
             "papeda",
@@ -205,8 +189,7 @@ const MEMORY_QUESTIONS = [
         ]
     },
     {
-        question:
-            "Apa game yang pernah kita mainkan bersama?",
+        question: "Apa game yang pernah kita mainkan bersama?",
         answers: ["roblox"]
     }
 ];
@@ -221,10 +204,9 @@ function normalizeAnswer(value) {
 function chooseRandomMemoryQuestion() {
     if (!MEMORY_QUESTIONS.length) return null;
 
-    selectedMemoryQuestion =
-        MEMORY_QUESTIONS[
-            Math.floor(Math.random() * MEMORY_QUESTIONS.length)
-        ];
+    selectedMemoryQuestion = MEMORY_QUESTIONS[
+        Math.floor(Math.random() * MEMORY_QUESTIONS.length)
+    ];
 
     return selectedMemoryQuestion;
 }
@@ -239,8 +221,6 @@ function showMemoryQuestion() {
     const error = $("memoryQuestionError");
 
     if (!screen || !questionElement) {
-        // Jika halaman lama belum memiliki layar pertanyaan,
-        // langsung buka aplikasi setelah login.
         showApp();
         return;
     }
@@ -257,9 +237,7 @@ function showMemoryQuestion() {
     if (answerInput) {
         answerInput.value = "";
 
-        setTimeout(() => {
-            answerInput.focus();
-        }, 50);
+        setTimeout(() => answerInput.focus(), 50);
     }
 
     if (error) error.textContent = "";
@@ -278,7 +256,6 @@ function showApp() {
     $("memoryQuestionScreen")?.classList.add("hidden");
     $("app")?.classList.remove("hidden");
 
-    // Sajak, foto/video, dan kalender dimuat dari Supabase.
     loadPoems();
     loadMedia();
     loadCalendarEvents();
@@ -298,13 +275,8 @@ if ($("loginForm")) {
         if (password === PASSWORD) {
             sessionStorage.setItem("rk_login", "yes");
 
-            if ($("loginError")) {
-                $("loginError").textContent = "";
-            }
-
-            if ($("password")) {
-                $("password").value = "";
-            }
+            if ($("loginError")) $("loginError").textContent = "";
+            if ($("password")) $("password").value = "";
 
             showMemoryQuestion();
         } else {
@@ -316,43 +288,39 @@ if ($("loginForm")) {
 }
 
 if ($("memoryQuestionForm")) {
-    $("memoryQuestionForm").addEventListener(
-        "submit",
-        function (event) {
-            event.preventDefault();
+    $("memoryQuestionForm").addEventListener("submit", function (event) {
+        event.preventDefault();
 
-            if (!selectedMemoryQuestion) return;
+        if (!selectedMemoryQuestion) return;
 
-            const input = $("memoryAnswer");
-            const answer = normalizeAnswer(input?.value);
+        const input = $("memoryAnswer");
+        const answer = normalizeAnswer(input?.value);
 
-            const valid = selectedMemoryQuestion.answers.some(
-                correctAnswer =>
-                    normalizeAnswer(correctAnswer) === answer
-            );
+        const valid = selectedMemoryQuestion.answers.some(
+            correctAnswer =>
+                normalizeAnswer(correctAnswer) === answer
+        );
 
-            if (valid) {
-                if ($("memoryQuestionError")) {
-                    $("memoryQuestionError").textContent = "";
-                }
-
-                showApp();
-            } else {
-                if ($("memoryQuestionError")) {
-                    $("memoryQuestionError").textContent =
-                        "Jawabannya belum tepat. Coba ingat lagi 🤍";
-                }
-
-                input?.select();
+        if (valid) {
+            if ($("memoryQuestionError")) {
+                $("memoryQuestionError").textContent = "";
             }
+
+            showApp();
+        } else {
+            if ($("memoryQuestionError")) {
+                $("memoryQuestionError").textContent =
+                    "Jawabannya belum tepat. Coba ingat lagi 🤍";
+            }
+
+            input?.select();
         }
-    );
+    });
 }
 
+// Hilangkan tombol ganti pertanyaan jika masih ada di HTML.
 if ($("changeQuestionBtn")) {
-    $("changeQuestionBtn").addEventListener("click", function () {
-        showMemoryQuestion();
-    });
+    $("changeQuestionBtn").style.display = "none";
 }
 
 if ($("logoutBtn")) {
@@ -366,11 +334,6 @@ if ($("logoutBtn")) {
 /* 
    6. SAJAK ONLINE — SUPABASE
  */
-
-/*
-   Data sajak tidak lagi disimpan di localStorage.
-   Sumber utama data adalah tabel Supabase "poems".
-*/
 
 async function loadPoems() {
     const list = $("poemList");
@@ -389,7 +352,6 @@ async function loadPoems() {
         );
 
         poems = Array.isArray(data) ? data : [];
-
         renderPoems();
     } catch (error) {
         console.error("Gagal memuat sajak:", error);
@@ -407,17 +369,13 @@ async function loadPoems() {
                 </div>
             `;
 
-            $("retryPoemsBtn")?.addEventListener(
-                "click",
-                loadPoems
-            );
+            $("retryPoemsBtn")?.addEventListener("click", loadPoems);
         }
     }
 }
 
 function renderPoems() {
     const list = $("poemList");
-
     if (!list) return;
 
     if (!poems.length) {
@@ -442,20 +400,16 @@ function renderPoems() {
     list.innerHTML = sorted.map(item => `
         <article class="poem-card">
             <div class="poem-date">${esc(fmt(item.date))}</div>
-
             <h3>${esc(item.title || "Tanpa judul")}</h3>
-
             <div class="poem-body">
                 ${esc(item.body || "").replace(/\n/g, "<br>")}
             </div>
-
             <div class="card-actions">
                 <button
                     type="button"
                     class="btn edit-poem"
                     data-id="${esc(item.id)}"
                 >Edit</button>
-
                 <button
                     type="button"
                     class="btn danger delete-poem"
@@ -517,83 +471,71 @@ if ($("addPoemBtn")) {
 }
 
 if ($("poemForm")) {
-    $("poemForm").addEventListener(
-        "submit",
-        async function (event) {
-            event.preventDefault();
+    $("poemForm").addEventListener("submit", async function (event) {
+        event.preventDefault();
 
-            const id = $("poemId")?.value || "";
-            const date = $("poemDate")?.value || today();
-            const title = $("poemTitle")?.value.trim() || "";
-            const body = $("poemBody")?.value.trim() || "";
+        const id = $("poemId")?.value || "";
+        const date = $("poemDate")?.value || today();
+        const title = $("poemTitle")?.value.trim() || "";
+        const body = $("poemBody")?.value.trim() || "";
 
-            if (!title && !body) {
-                alert("Isi judul atau isi sajak terlebih dahulu.");
-                return;
-            }
-
-            const submitButton = $("poemForm").querySelector(
-                'button[type="submit"]'
-            );
-
-            if (submitButton) submitButton.disabled = true;
-
-            try {
-                const record = {
-                    date,
-                    title,
-                    body,
-                    updated_at: new Date().toISOString()
-                };
-
-                if (id) {
-                    await supabaseRequest(
-                        `/rest/v1/${SUPABASE_POEMS_TABLE}` +
-                        `?id=eq.${encodeURIComponent(id)}`,
-                        {
-                            method: "PATCH",
-                            headers: {
-                                Prefer: "return=minimal"
-                            },
-                            body: JSON.stringify(record)
-                        }
-                    );
-                } else {
-                    await supabaseRequest(
-                        `/rest/v1/${SUPABASE_POEMS_TABLE}`,
-                        {
-                            method: "POST",
-                            headers: {
-                                Prefer: "return=minimal"
-                            },
-                            body: JSON.stringify({
-                                ...record,
-                                created_at: new Date().toISOString()
-                            })
-                        }
-                    );
-                }
-
-                closePoemModal();
-                await loadPoems();
-
-                alert(
-                    id
-                        ? "Tulisan berhasil diperbarui secara online."
-                        : "Tulisan berhasil disimpan secara online."
-                );
-            } catch (error) {
-                console.error("Gagal menyimpan sajak:", error);
-
-                alert(
-                    "Tulisan gagal disimpan.\n\n" +
-                    error.message
-                );
-            } finally {
-                if (submitButton) submitButton.disabled = false;
-            }
+        if (!title && !body) {
+            alert("Isi judul atau isi sajak terlebih dahulu.");
+            return;
         }
-    );
+
+        const submitButton = $("poemForm").querySelector(
+            'button[type="submit"]'
+        );
+
+        if (submitButton) submitButton.disabled = true;
+
+        try {
+            const record = {
+                date,
+                title,
+                body,
+                updated_at: new Date().toISOString()
+            };
+
+            if (id) {
+                await supabaseRequest(
+                    `/rest/v1/${SUPABASE_POEMS_TABLE}` +
+                    `?id=eq.${encodeURIComponent(id)}`,
+                    {
+                        method: "PATCH",
+                        headers: { Prefer: "return=minimal" },
+                        body: JSON.stringify(record)
+                    }
+                );
+            } else {
+                await supabaseRequest(
+                    `/rest/v1/${SUPABASE_POEMS_TABLE}`,
+                    {
+                        method: "POST",
+                        headers: { Prefer: "return=minimal" },
+                        body: JSON.stringify({
+                            ...record,
+                            created_at: new Date().toISOString()
+                        })
+                    }
+                );
+            }
+
+            closePoemModal();
+            await loadPoems();
+
+            alert(id
+                ? "Tulisan berhasil diperbarui secara online."
+                : "Tulisan berhasil disimpan secara online."
+            );
+        } catch (error) {
+            console.error("Gagal menyimpan sajak:", error);
+            alert("Tulisan gagal disimpan.\n\n" + error.message);
+        } finally {
+            if (submitButton) submitButton.disabled = false;
+        }
+    });
 }
 
 async function deletePoem(id) {
@@ -603,11 +545,9 @@ async function deletePoem(id) {
 
     if (!item) return;
 
-    const ok = confirm(
-        `Hapus sajak "${item.title || "Tanpa judul"}"?`
-    );
-
-    if (!ok) return;
+    if (!confirm(`Hapus sajak "${item.title || "Tanpa judul"}"?`)) {
+        return;
+    }
 
     try {
         await supabaseRequest(
@@ -615,9 +555,7 @@ async function deletePoem(id) {
             `?id=eq.${encodeURIComponent(id)}`,
             {
                 method: "DELETE",
-                headers: {
-                    Prefer: "return=minimal"
-                }
+                headers: { Prefer: "return=minimal" }
             }
         );
 
@@ -625,11 +563,7 @@ async function deletePoem(id) {
         alert("Tulisan berhasil dihapus dari database online.");
     } catch (error) {
         console.error("Gagal menghapus sajak:", error);
-
-        alert(
-            "Tulisan gagal dihapus.\n\n" +
-            error.message
-        );
+        alert("Tulisan gagal dihapus.\n\n" + error.message);
     }
 }
 
@@ -655,7 +589,6 @@ async function loadMedia() {
         );
 
         media = Array.isArray(data) ? data : [];
-
         renderMedia();
     } catch (error) {
         console.error("Gagal mengambil media:", error);
@@ -666,8 +599,14 @@ async function loadMedia() {
                     Gagal memuat foto/video.
                     <br><br>
                     <small>${esc(error.message)}</small>
+                    <br><br>
+                    <button type="button" class="btn" id="retryMediaBtn">
+                        Coba Lagi
+                    </button>
                 </div>
             `;
+
+            $("retryMediaBtn")?.addEventListener("click", loadMedia);
         }
     }
 }
@@ -677,13 +616,13 @@ function getMediaUrl(filePath) {
 
     return (
         `${SUPABASE_URL}/storage/v1/object/public/` +
-        `${SUPABASE_BUCKET}/${String(filePath).split("/").map(encodeURIComponent).join("/")}`
+        `${SUPABASE_BUCKET}/` +
+        String(filePath).split("/").map(encodeURIComponent).join("/")
     );
 }
 
 function renderMedia() {
     const list = $("mediaList");
-
     if (!list) return;
 
     if (!media.length) {
@@ -695,10 +634,8 @@ function renderMedia() {
 
     list.innerHTML = media.map(item => {
         const url = getMediaUrl(item.file_path);
-
-        const isVideo =
-            item.media_type === "video" ||
-            String(item.media_type || "").startsWith("video/");
+        const isVideo = String(item.media_type || "")
+            .startsWith("video");
 
         return `
             <article class="media-card">
@@ -707,17 +644,22 @@ function renderMedia() {
                         isVideo
                             ? `
                                 <video
+                                    class="media-video"
                                     src="${esc(url)}"
                                     controls
                                     preload="metadata"
+                                    playsinline
                                 ></video>
                             `
                             : `
                                 <img
+                                    class="media-image"
                                     src="${esc(url)}"
                                     alt="${esc(item.title || "Kenangan")}"
+                                    data-id="${esc(item.id)}"
                                     loading="lazy"
-                                    onerror="this.style.display='none';"
+                                    title="Klik untuk melihat foto lebih besar"
+                                    style="cursor:zoom-in"
                                 >
                             `
                     }
@@ -750,6 +692,20 @@ function renderMedia() {
         `;
     }).join("");
 
+    // Klik langsung pada foto untuk membuka tampilan besar.
+    list.querySelectorAll(".media-image").forEach(img => {
+        img.addEventListener("click", function () {
+            openMediaPreview(this.dataset.id);
+        });
+
+        img.addEventListener("keydown", function (event) {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openMediaPreview(this.dataset.id);
+            }
+        });
+    });
+
     list.querySelectorAll(".delete-media").forEach(button => {
         button.addEventListener("click", function () {
             deleteMedia(this.dataset.id);
@@ -757,24 +713,152 @@ function renderMedia() {
     });
 }
 
-if ($("mediaInput")) {
-    $("mediaInput").addEventListener(
-        "change",
-        async function () {
-            const files = Array.from(this.files || []);
-
-            if (!files.length) return;
-
-            await uploadMedia(files);
-
-            this.value = "";
-        }
+/* Preview besar khusus foto. Video tetap diputar langsung di galeri. */
+function openMediaPreview(id) {
+    const item = media.find(
+        entry => String(entry.id) === String(id)
     );
+
+    if (!item) {
+        alert("Media tidak ditemukan. Silakan muat ulang halaman.");
+        return;
+    }
+
+    const isVideo = String(item.media_type || "").startsWith("video");
+
+    if (isVideo) return;
+
+    const url = getMediaUrl(item.file_path);
+
+    if (!url) {
+        alert("Alamat file media tidak ditemukan.");
+        return;
+    }
+
+    document.getElementById("mediaPreviewModal")?.remove();
+
+    const modal = document.createElement("div");
+    modal.id = "mediaPreviewModal";
+
+    Object.assign(modal.style, {
+        position: "fixed",
+        inset: "0",
+        zIndex: "999999",
+        background: "rgba(0, 0, 0, 0.92)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+        boxSizing: "border-box",
+        cursor: "zoom-out"
+    });
+
+    modal.innerHTML = `
+        <button
+            type="button"
+            id="closeMediaPreview"
+            aria-label="Tutup preview"
+            style="
+                position:absolute;
+                top:16px;
+                right:20px;
+                width:46px;
+                height:46px;
+                border:0;
+                border-radius:50%;
+                background:#fff;
+                color:#333;
+                font-size:30px;
+                line-height:1;
+                cursor:pointer;
+                z-index:2;
+            "
+        >&times;</button>
+
+        <div style="
+            width:100%;
+            max-width:1100px;
+            text-align:center;
+            cursor:default;
+        ">
+            <img
+                src="${esc(url)}"
+                alt="${esc(item.title || "Kenangan")}"
+                style="
+                    display:block;
+                    max-width:100%;
+                    max-height:75vh;
+                    object-fit:contain;
+                    margin:auto;
+                    border-radius:12px;
+                "
+            >
+
+            <h3 style="
+                color:#fff;
+                margin:16px 0 6px;
+                font-size:20px;
+                overflow-wrap:anywhere;
+            ">${esc(item.title || "Kenangan")}</h3>
+
+            ${
+                item.caption
+                    ? `<p style="
+                        color:#eee;
+                        margin:0;
+                        overflow-wrap:anywhere;
+                    ">${esc(item.caption)}</p>`
+                    : ""
+            }
+
+            ${
+                item.taken_at
+                    ? `<p style="color:#ccc;font-size:13px">
+                        ${esc(fmt(item.taken_at))}
+                    </p>`
+                    : ""
+            }
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function closePreview() {
+        modal.remove();
+        document.body.style.overflow = previousOverflow;
+        document.removeEventListener("keydown", handlePreviewKey);
+    }
+
+    function handlePreviewKey(event) {
+        if (event.key === "Escape") closePreview();
+    }
+
+    modal.querySelector("#closeMediaPreview")
+        .addEventListener("click", closePreview);
+
+    modal.addEventListener("click", function (event) {
+        if (event.target === modal) closePreview();
+    });
+
+    document.addEventListener("keydown", handlePreviewKey);
+}
+
+/* Upload foto dan video */
+if ($("mediaInput")) {
+    $("mediaInput").addEventListener("change", async function () {
+        const files = Array.from(this.files || []);
+        if (!files.length) return;
+
+        await uploadMedia(files);
+        this.value = "";
+    });
 }
 
 async function uploadMedia(files) {
     const input = $("mediaInput");
-
     if (input) input.disabled = true;
 
     let successCount = 0;
@@ -792,7 +876,6 @@ async function uploadMedia(files) {
 
             const originalName = file.name || "media";
             const lastDot = originalName.lastIndexOf(".");
-
             const extension = lastDot > 0
                 ? originalName.substring(lastDot).toLowerCase()
                 : "";
@@ -812,80 +895,83 @@ async function uploadMedia(files) {
 
             const filePath = fileName;
 
-            const uploadUrl =
-                `${SUPABASE_URL}/storage/v1/object/` +
-                `${SUPABASE_BUCKET}/${encodeURIComponent(filePath)}`;
-
-            const uploadResponse = await fetch(uploadUrl, {
-                method: "POST",
-                headers: {
-                    apikey: SUPABASE_PUBLISHABLE_KEY,
-                    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-                    "x-upsert": "false",
-                    "Content-Type": file.type || "application/octet-stream"
-                },
-                body: file
-            });
-
-            let uploadData = null;
-
             try {
-                uploadData = await uploadResponse.json();
-            } catch {
-                uploadData = null;
-            }
+                const uploadUrl =
+                    `${SUPABASE_URL}/storage/v1/object/` +
+                    `${SUPABASE_BUCKET}/${encodeURIComponent(filePath)}`;
 
-            if (!uploadResponse.ok) {
-                throw new Error(
-                    uploadData?.message ||
-                    uploadData?.error ||
-                    `Upload ${file.name} gagal (${uploadResponse.status})`
-                );
-            }
+                const uploadResponse = await fetch(uploadUrl, {
+                    method: "POST",
+                    headers: {
+                        apikey: SUPABASE_PUBLISHABLE_KEY,
+                        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+                        "x-upsert": "false",
+                        "Content-Type": file.type || "application/octet-stream"
+                    },
+                    body: file
+                });
 
-            const record = {
-                title: file.name,
-                caption: "",
-                taken_at: null,
-                media_type: file.type.startsWith("video/")
-                    ? "video"
-                    : "image",
-                file_path: filePath
-            };
+                let uploadData = null;
 
-            try {
-                await supabaseRequest(
-                    `/rest/v1/${SUPABASE_TABLE}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            Prefer: "return=minimal"
-                        },
-                        body: JSON.stringify(record)
-                    }
-                );
-            } catch (databaseError) {
-                // Jika pencatatan database gagal, coba hapus file yang baru diunggah.
                 try {
-                    await fetch(
-                        `${SUPABASE_URL}/storage/v1/object/` +
-                        `${SUPABASE_BUCKET}/${encodeURIComponent(filePath)}`,
-                        {
-                            method: "DELETE",
-                            headers: {
-                                apikey: SUPABASE_PUBLISHABLE_KEY,
-                                Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-                            }
-                        }
-                    );
+                    uploadData = await uploadResponse.json();
                 } catch {
-                    // Tidak ada tindakan tambahan.
+                    uploadData = null;
                 }
 
-                throw databaseError;
-            }
+                if (!uploadResponse.ok) {
+                    throw new Error(
+                        uploadData?.message ||
+                        uploadData?.error ||
+                        `Upload gagal (${uploadResponse.status})`
+                    );
+                }
 
-            successCount++;
+                const record = {
+                    title: file.name,
+                    caption: "",
+                    taken_at: null,
+                    media_type: file.type.startsWith("video/")
+                        ? "video"
+                        : "image",
+                    file_path: filePath
+                };
+
+                try {
+                    await supabaseRequest(
+                        `/rest/v1/${SUPABASE_TABLE}`,
+                        {
+                            method: "POST",
+                            headers: { Prefer: "return=minimal" },
+                            body: JSON.stringify(record)
+                        }
+                    );
+                } catch (databaseError) {
+                    // Hapus file Storage jika pencatatan database gagal.
+                    try {
+                        await fetch(
+                            `${SUPABASE_URL}/storage/v1/object/` +
+                            `${SUPABASE_BUCKET}/${encodeURIComponent(filePath)}`,
+                            {
+                                method: "DELETE",
+                                headers: {
+                                    apikey: SUPABASE_PUBLISHABLE_KEY,
+                                    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+                                }
+                            }
+                        );
+                    } catch {
+                        // Tidak ada tindakan tambahan.
+                    }
+
+                    throw databaseError;
+                }
+
+                successCount++;
+            } catch (error) {
+                console.error(`Gagal mengunggah ${file.name}:`, error);
+                errors.push(`${file.name}: ${error.message}`);
+            }
         }
 
         await loadMedia();
@@ -895,23 +981,20 @@ async function uploadMedia(files) {
         }
 
         if (errors.length) {
-            alert("Beberapa file tidak berhasil diproses:\n\n" + errors.join("\n"));
+            alert(
+                "Beberapa file tidak berhasil diproses:\n\n" +
+                errors.join("\n")
+            );
         }
     } catch (error) {
         console.error("Upload media gagal:", error);
-
-        alert(
-            "Upload gagal.\n\n" +
-            error.message +
-            "\n\nPeriksa batas ukuran file dan pengaturan Supabase Storage."
-        );
-
-        await loadMedia();
+        alert("Upload gagal.\n\n" + error.message);
     } finally {
         if (input) input.disabled = false;
     }
 }
 
+/* Hapus foto/video */
 async function deleteMedia(id) {
     const item = media.find(
         mediaItem => String(mediaItem.id) === String(id)
@@ -920,13 +1003,13 @@ async function deleteMedia(id) {
     if (!item) return;
 
     const ok = confirm(
-        `Hapus "${item.title || "Kenangan"}"?\n\nFile juga akan dihapus dari Storage.`
+        `Hapus "${item.title || "Kenangan"}"?\n\n` +
+        "File juga akan dihapus dari Storage."
     );
 
     if (!ok) return;
 
     try {
-        // Hapus objek di Storage menggunakan endpoint penghapusan objek.
         const response = await fetch(
             `${SUPABASE_URL}/storage/v1/object/${SUPABASE_BUCKET}`,
             {
@@ -954,9 +1037,7 @@ async function deleteMedia(id) {
             `/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(id)}`,
             {
                 method: "DELETE",
-                headers: {
-                    Prefer: "return=minimal"
-                }
+                headers: { Prefer: "return=minimal" }
             }
         );
 
@@ -964,11 +1045,7 @@ async function deleteMedia(id) {
         alert("Kenangan berhasil dihapus.");
     } catch (error) {
         console.error("Gagal menghapus media:", error);
-
-        alert(
-            "Gagal menghapus kenangan.\n\n" +
-            error.message
-        );
+        alert("Gagal menghapus kenangan.\n\n" + error.message);
     }
 }
 
@@ -1007,7 +1084,6 @@ async function loadCalendarEvents() {
         );
 
         events = Array.isArray(data) ? data : [];
-
         renderCalendar();
     } catch (error) {
         console.error("Gagal memuat kalender:", error);
@@ -1038,10 +1114,7 @@ function renderCalendar() {
 
     title.textContent = currentCalendarDate.toLocaleDateString(
         "id-ID",
-        {
-            month: "long",
-            year: "numeric"
-        }
+        { month: "long", year: "numeric" }
     );
 
     const startDay = new Date(year, month, 1).getDay();
@@ -1080,7 +1153,6 @@ function renderCalendar() {
                 data-date="${dateString}"
             >
                 <div class="calendar-number">${day}</div>
-
                 <div class="calendar-events">
                     ${dayEvents.slice(0, 2).map(event => `
                         <div
@@ -1114,7 +1186,6 @@ function renderCalendar() {
 
 function renderEvents() {
     const list = $("eventList");
-
     if (!list) return;
 
     const year = currentCalendarDate.getFullYear();
@@ -1128,14 +1199,10 @@ function renderEvents() {
                 String(event.date).slice(0, 10) + "T00:00:00"
             );
 
-            return (
-                date.getFullYear() === year &&
-                date.getMonth() === month
-            );
+            return date.getFullYear() === year &&
+                date.getMonth() === month;
         })
-        .sort((a, b) =>
-            String(a.date).localeCompare(String(b.date))
-        );
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)));
 
     if (!monthEvents.length) {
         list.innerHTML = `
@@ -1159,11 +1226,7 @@ function renderEvents() {
                     ${esc(getEventTypeName(event.type))}
                 </div>
 
-                ${
-                    event.note
-                        ? `<p>${esc(event.note)}</p>`
-                        : ""
-                }
+                ${event.note ? `<p>${esc(event.note)}</p>` : ""}
             </div>
 
             <div class="event-actions">
@@ -1231,7 +1294,6 @@ if ($("nextMonth")) {
 
 function openEventModal(id = null) {
     const modal = $("eventModal");
-
     if (!modal) return;
 
     const item = id
@@ -1249,11 +1311,17 @@ function openEventModal(id = null) {
     }
 
     if ($("eventId")) $("eventId").value = item?.id || "";
-    if ($("eventDate")) $("eventDate").value = item?.date
-        ? String(item.date).slice(0, 10)
-        : today();
 
-    if ($("eventType")) $("eventType").value = item?.type || "lainnya";
+    if ($("eventDate")) {
+        $("eventDate").value = item?.date
+            ? String(item.date).slice(0, 10)
+            : today();
+    }
+
+    if ($("eventType")) {
+        $("eventType").value = item?.type || "lainnya";
+    }
+
     if ($("eventTitle")) $("eventTitle").value = item?.title || "";
     if ($("eventNote")) $("eventNote").value = item?.note || "";
 
@@ -1296,81 +1364,69 @@ if ($("addEventBtn")) {
 }
 
 if ($("eventForm")) {
-    $("eventForm").addEventListener(
-        "submit",
-        async function (event) {
-            event.preventDefault();
+    $("eventForm").addEventListener("submit", async function (event) {
+        event.preventDefault();
 
-            const id = $("eventId")?.value || "";
-            const date = $("eventDate")?.value || today();
-            const type = $("eventType")?.value || "lainnya";
-            const title = $("eventTitle")?.value.trim() || "";
-            const note = $("eventNote")?.value.trim() || "";
+        const id = $("eventId")?.value || "";
+        const date = $("eventDate")?.value || today();
+        const type = $("eventType")?.value || "lainnya";
+        const title = $("eventTitle")?.value.trim() || "";
+        const note = $("eventNote")?.value.trim() || "";
 
-            if (!date) {
-                alert("Tanggal harus diisi.");
-                return;
-            }
-
-            if (!title) {
-                alert("Nama / Catatan harus diisi.");
-                return;
-            }
-
-            const submitButton = $("eventForm").querySelector(
-                'button[type="submit"]'
-            );
-
-            if (submitButton) submitButton.disabled = true;
-
-            try {
-                const record = { date, type, title, note };
-
-                if (id) {
-                    await supabaseRequest(
-                        `/rest/v1/${SUPABASE_CALENDAR_TABLE}` +
-                        `?id=eq.${encodeURIComponent(id)}`,
-                        {
-                            method: "PATCH",
-                            headers: {
-                                Prefer: "return=minimal"
-                            },
-                            body: JSON.stringify(record)
-                        }
-                    );
-                } else {
-                    await supabaseRequest(
-                        `/rest/v1/${SUPABASE_CALENDAR_TABLE}`,
-                        {
-                            method: "POST",
-                            headers: {
-                                Prefer: "return=minimal"
-                            },
-                            body: JSON.stringify(record)
-                        }
-                    );
-                }
-
-                closeEventModal();
-                await loadCalendarEvents();
-
-                alert(
-                    id
-                        ? "Jadwal berhasil diperbarui."
-                        : "Jadwal berhasil disimpan."
-                );
-            } catch (error) {
-                console.error("Gagal menyimpan jadwal:", error);
-
-                alert(
-                    "Gagal menyimpan jadwal.\n\n" +
-                    error.message
-                );
-            } finally {
-                if (submitButton) submitButton.disabled = false;
-            }
+        if (!date) {
+            alert("Tanggal harus diisi.");
+            return;
         }
-    );
+
+        if (!title) {
+            alert("Nama / Catatan harus diisi.");
+            return;
+        }
+
+        const submitButton = $("eventForm").querySelector(
+            'button[type="submit"]'
+        );
+
+        if (submitButton) submitButton.disabled = true;
+
+        try {
+            const record = { date, type, title, note };
+
+            if (id) {
+                await supabaseRequest(
+                    `/rest/v1/${SUPABASE_CALENDAR_TABLE}` +
+                    `?id=eq.${encodeURIComponent(id)}`,
+                    {
+                        method: "PATCH",
+                        headers: { Prefer: "return=minimal" },
+                        body: JSON.stringify(record)
+                    }
+                );
+            } else {
+                await supabaseRequest(
+                    `/rest/v1/${SUPABASE_CALENDAR_TABLE}`,
+                    {
+                        method: "POST",
+                        headers: { Prefer: "return=minimal" },
+                        body: JSON.stringify(record)
+                    }
+                );
+            }
+
+            closeEventModal();
+            await loadCalendarEvents();
+
+            alert(id
+                ? "Jadwal berhasil diperbarui."
+                : "Jadwal berhasil disimpan."
+            );
+        } catch (error) {
+            console.error("Gagal menyimpan jadwal:", error);
+            alert("Gagal menyimpan jadwal.\n\n" + error.message);
+        } finally {
+            if (submitButton) submitButton.disabled = false;
+        }
+    });
 }
 
 async function deleteEvent(id) {
@@ -1392,9 +1448,7 @@ async function deleteEvent(id) {
             `?id=eq.${encodeURIComponent(id)}`,
             {
                 method: "DELETE",
-                headers: {
-                    Prefer: "return=minimal"
-                }
+                headers: { Prefer: "return=minimal" }
             }
         );
 
@@ -1402,11 +1456,7 @@ async function deleteEvent(id) {
         alert("Jadwal berhasil dihapus.");
     } catch (error) {
         console.error("Gagal menghapus jadwal:", error);
-
-        alert(
-            "Gagal menghapus jadwal.\n\n" +
-            error.message
-        );
+        alert("Gagal menghapus jadwal.\n\n" + error.message);
     }
 }
 
@@ -1445,7 +1495,6 @@ document.addEventListener("keydown", function (event) {
 if ($("privateCalendarButton")) {
     $("privateCalendarButton").addEventListener("click", function () {
         const calendar = $("calendar");
-
         if (!calendar) return;
 
         calendar.scrollIntoView({
