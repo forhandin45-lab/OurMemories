@@ -6,6 +6,10 @@
  - Login dan pertanyaan kenangan acak
  - Sajak online dengan Supabase
  - Galeri foto/video online
+ - Judul foto/video dapat dibuat sendiri
+ - Tanggal dan jam foto/video dapat ditambahkan
+ - Edit judul, tanggal, dan jam setelah upload
+ - Urutkan kenangan dari paling lama atau paling baru
  - Foto bisa diklik untuk melihat ukuran besar
  - Video langsung diputar di galeri
  - Kalender online Supabase
@@ -62,17 +66,55 @@ function uid() {
 function fmt(dateString) {
     if (!dateString) return "";
 
-    const d = new Date(
-        String(dateString).slice(0, 10) + "T00:00:00"
-    );
+    const d = new Date(dateString);
 
-    if (Number.isNaN(d.getTime())) return dateString;
+    if (Number.isNaN(d.getTime())) {
+        return String(dateString);
+    }
 
     return d.toLocaleDateString("id-ID", {
         day: "numeric",
         month: "long",
         year: "numeric"
     });
+}
+
+function fmtDateTime(dateString) {
+    if (!dateString) return "";
+
+    const d = new Date(dateString);
+
+    if (Number.isNaN(d.getTime())) {
+        return String(dateString);
+    }
+
+    return d.toLocaleString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+function toDateTimeLocal(value) {
+    if (!value) return "";
+
+    const d = new Date(value);
+
+    if (Number.isNaN(d.getTime())) return "";
+
+    const pad = number => String(number).padStart(2, "0");
+
+    return (
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-` +
+        `${pad(d.getDate())}T${pad(d.getHours())}:` +
+        `${pad(d.getMinutes())}`
+    );
+}
+
+function nowDateTimeLocal() {
+    return toDateTimeLocal(new Date());
 }
 
 function esc(value) {
@@ -82,6 +124,13 @@ function esc(value) {
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
+}
+
+function safeFileTitle(fileName) {
+    const name = String(fileName || "Kenangan");
+    const lastDot = name.lastIndexOf(".");
+
+    return lastDot > 0 ? name.substring(0, lastDot) : name;
 }
 
 async function supabaseRequest(path, options = {}) {
@@ -137,8 +186,15 @@ async function supabaseRequest(path, options = {}) {
 let poems = [];
 let events = [];
 let media = [];
+
 let currentCalendarDate = new Date();
 let selectedMemoryQuestion = null;
+
+// Urutan default: kenangan paling baru terlebih dahulu.
+let mediaSortOrder = "newest";
+
+// Antrean file yang sedang dipersiapkan untuk upload.
+let pendingMediaFiles = [];
 
 
 /* 
@@ -236,7 +292,6 @@ function showMemoryQuestion() {
 
     if (answerInput) {
         answerInput.value = "";
-
         setTimeout(() => answerInput.focus(), 50);
     }
 
@@ -318,7 +373,6 @@ if ($("memoryQuestionForm")) {
     });
 }
 
-// Hilangkan tombol ganti pertanyaan jika masih ada di HTML.
 if ($("changeQuestionBtn")) {
     $("changeQuestionBtn").style.display = "none";
 }
@@ -569,7 +623,14 @@ async function deletePoem(id) {
 
 
 /* 
-   7. FOTO / VIDEO ONLINE
+   7. GALERI FOTO / VIDEO ONLINE
+ */
+
+/*
+ * Kompatibel dengan kolom memories:
+ * id, title, caption, taken_at, media_type, file_path, created_at
+ *
+ * taken_at menyimpan tanggal dan waktu kenangan.
  */
 
 async function loadMedia() {
@@ -621,20 +682,122 @@ function getMediaUrl(filePath) {
     );
 }
 
+/*
+ * Untuk sorting, taken_at menjadi acuan utama.
+ * Media lama yang belum memiliki taken_at memakai created_at.
+ */
+function getMediaSortDate(item) {
+    const value = item.taken_at || item.created_at || "";
+    const timestamp = new Date(value).getTime();
+
+    return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function getSortedMedia() {
+    const result = [...media];
+
+    result.sort((a, b) => {
+        const difference =
+            getMediaSortDate(a) - getMediaSortDate(b);
+
+        if (difference === 0) {
+            return String(a.created_at || "")
+                .localeCompare(String(b.created_at || ""));
+        }
+
+        return mediaSortOrder === "oldest"
+            ? difference
+            : -difference;
+    });
+
+    return result;
+}
+
+/*
+ * Kontrol urutan dibuat otomatis di atas galeri.
+ * Tidak perlu menambahkan HTML baru.
+ */
+function ensureMediaSortControl() {
+    const list = $("mediaList");
+    if (!list) return;
+
+    let controls = $("mediaSortControls");
+
+    if (!controls) {
+        controls = document.createElement("div");
+        controls.id = "mediaSortControls";
+
+        Object.assign(controls.style, {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "flex-end",
+            flexWrap: "wrap",
+            gap: "10px",
+            margin: "12px 0 18px"
+        });
+
+        controls.innerHTML = `
+            <label
+                for="mediaSortOrder"
+                style="font-size:14px"
+            >Urutkan kenangan:</label>
+
+            <select
+                id="mediaSortOrder"
+                style="
+                    padding:10px 12px;
+                    border:1px solid #d8c9bd;
+                    border-radius:10px;
+                    background:#fff;
+                    color:#3e3531;
+                    max-width:100%;
+                "
+            >
+                <option value="newest">Paling baru</option>
+                <option value="oldest">Paling lama</option>
+            </select>
+        `;
+
+        list.parentNode?.insertBefore(controls, list);
+
+        $("mediaSortOrder").addEventListener("change", function () {
+            mediaSortOrder = this.value === "oldest"
+                ? "oldest"
+                : "newest";
+
+            renderMedia();
+        });
+    }
+
+    const select = $("mediaSortOrder");
+
+    if (select) {
+        select.value = mediaSortOrder;
+    }
+}
+
 function renderMedia() {
     const list = $("mediaList");
     if (!list) return;
 
+    ensureMediaSortControl();
+
     if (!media.length) {
         list.innerHTML = `
-            <div class="empty-state">Belum ada foto atau video.</div>
+            <div class="empty-state">
+                Belum ada foto atau video.
+            </div>
         `;
         return;
     }
 
-    list.innerHTML = media.map(item => {
+    const sorted = getSortedMedia();
+
+    list.innerHTML = sorted.map(item => {
         const url = getMediaUrl(item.file_path);
+
         const isVideo = String(item.media_type || "")
+            .toLowerCase()
             .startsWith("video");
 
         return `
@@ -676,11 +839,25 @@ function renderMedia() {
 
                     ${
                         item.taken_at
-                            ? `<small>${esc(fmt(item.taken_at))}</small>`
-                            : ""
+                            ? `
+                                <small class="media-date">
+                                    ${esc(fmtDateTime(item.taken_at))}
+                                </small>
+                            `
+                            : `
+                                <small class="media-date">
+                                    Waktu belum diatur
+                                </small>
+                            `
                     }
 
                     <div class="card-actions">
+                        <button
+                            type="button"
+                            class="btn edit-media"
+                            data-id="${esc(item.id)}"
+                        >Edit</button>
+
                         <button
                             type="button"
                             class="btn danger delete-media"
@@ -692,7 +869,6 @@ function renderMedia() {
         `;
     }).join("");
 
-    // Klik langsung pada foto untuk membuka tampilan besar.
     list.querySelectorAll(".media-image").forEach(img => {
         img.addEventListener("click", function () {
             openMediaPreview(this.dataset.id);
@@ -706,6 +882,12 @@ function renderMedia() {
         });
     });
 
+    list.querySelectorAll(".edit-media").forEach(button => {
+        button.addEventListener("click", function () {
+            openMediaEditModal(this.dataset.id);
+        });
+    });
+
     list.querySelectorAll(".delete-media").forEach(button => {
         button.addEventListener("click", function () {
             deleteMedia(this.dataset.id);
@@ -713,7 +895,715 @@ function renderMedia() {
     });
 }
 
-/* Preview besar khusus foto. Video tetap diputar langsung di galeri. */
+
+/* 
+   7A. FORM EDIT JUDUL DAN WAKTU MEDIA
+ */
+
+function ensureMediaEditModal() {
+    let modal = $("mediaEditModal");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "mediaEditModal";
+    modal.className = "modal hidden";
+
+    Object.assign(modal.style, {
+        position: "fixed",
+        inset: "0",
+        zIndex: "999990",
+        background: "rgba(0,0,0,.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "18px",
+        overflowY: "auto"
+    });
+
+    modal.innerHTML = `
+        <div
+            class="modal-content"
+            style="
+                width:100%;
+                max-width:480px;
+                max-height:90vh;
+                overflow-y:auto;
+                box-sizing:border-box;
+                background:#fffaf6;
+                color:#3e3531;
+                border-radius:16px;
+                padding:22px;
+                box-shadow:0 12px 40px rgba(0,0,0,.2);
+            "
+        >
+            <div style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:12px;
+                margin-bottom:16px;
+            ">
+                <h2 style="margin:0;font-size:21px">
+                    Edit Kenangan
+                </h2>
+
+                <button
+                    type="button"
+                    id="closeMediaEditModal"
+                    aria-label="Tutup"
+                    style="
+                        border:0;
+                        background:transparent;
+                        font-size:28px;
+                        cursor:pointer;
+                    "
+                >&times;</button>
+            </div>
+
+            <form id="mediaEditForm">
+                <input type="hidden" id="editMediaId">
+
+                <label
+                    for="editMediaTitle"
+                    style="display:block;margin:0 0 6px"
+                >Judul kenangan</label>
+
+                <input
+                    type="text"
+                    id="editMediaTitle"
+                    maxlength="200"
+                    required
+                    placeholder="Contoh: Hari pertama bertemu"
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:12px;
+                        border:1px solid #d8c9bd;
+                        border-radius:9px;
+                        margin-bottom:16px;
+                    "
+                >
+
+                <label
+                    for="editMediaTakenAt"
+                    style="display:block;margin:0 0 6px"
+                >Tanggal dan jam kenangan</label>
+
+                <input
+                    type="datetime-local"
+                    id="editMediaTakenAt"
+                    required
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:12px;
+                        border:1px solid #d8c9bd;
+                        border-radius:9px;
+                        margin-bottom:10px;
+                    "
+                >
+
+                <p style="
+                    font-size:12px;
+                    line-height:1.5;
+                    color:#77685e;
+                    margin:0 0 18px;
+                ">
+                    Tanggal dan jam ini digunakan untuk menampilkan
+                    serta mengurutkan kenangan.
+                </p>
+
+                <div style="
+                    display:flex;
+                    justify-content:flex-end;
+                    flex-wrap:wrap;
+                    gap:10px;
+                ">
+                    <button
+                        type="button"
+                        class="btn"
+                        id="cancelMediaEdit"
+                    >Batal</button>
+
+                    <button
+                        type="submit"
+                        class="btn"
+                        id="saveMediaEdit"
+                    >Simpan Perubahan</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    $("closeMediaEditModal").addEventListener(
+        "click",
+        closeMediaEditModal
+    );
+
+    $("cancelMediaEdit").addEventListener(
+        "click",
+        closeMediaEditModal
+    );
+
+    modal.addEventListener("click", function (event) {
+        if (event.target === modal) {
+            closeMediaEditModal();
+        }
+    });
+
+    $("mediaEditForm").addEventListener(
+        "submit",
+        saveMediaEdit
+    );
+
+    return modal;
+}
+
+function openMediaEditModal(id) {
+    const item = media.find(
+        entry => String(entry.id) === String(id)
+    );
+
+    if (!item) {
+        alert("Kenangan tidak ditemukan. Muat ulang galeri.");
+        return;
+    }
+
+    const modal = ensureMediaEditModal();
+
+    $("editMediaId").value = item.id;
+    $("editMediaTitle").value = item.title || "";
+    $("editMediaTakenAt").value =
+        toDateTimeLocal(item.taken_at || item.created_at) ||
+        nowDateTimeLocal();
+
+    modal.classList.remove("hidden");
+}
+
+function closeMediaEditModal() {
+    $("mediaEditModal")?.classList.add("hidden");
+}
+
+async function saveMediaEdit(event) {
+    event.preventDefault();
+
+    const id = $("editMediaId")?.value || "";
+    const title = $("editMediaTitle")?.value.trim() || "";
+    const dateTime = $("editMediaTakenAt")?.value || "";
+
+    if (!id) {
+        alert("ID kenangan tidak ditemukan.");
+        return;
+    }
+
+    if (!title) {
+        alert("Judul kenangan harus diisi.");
+        return;
+    }
+
+    if (!dateTime) {
+        alert("Tanggal dan jam harus diisi.");
+        return;
+    }
+
+    const date = new Date(dateTime);
+
+    if (Number.isNaN(date.getTime())) {
+        alert("Tanggal atau jam tidak valid.");
+        return;
+    }
+
+    const button = $("saveMediaEdit");
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Menyimpan...";
+    }
+
+    try {
+        /*
+         * Mengirim ISO datetime ke kolom taken_at bertipe timestamptz.
+         * Konversi ini menyimpan waktu beserta offset zona waktu browser.
+         */
+        const record = {
+            title,
+            taken_at: date.toISOString()
+        };
+
+        await supabaseRequest(
+            `/rest/v1/${SUPABASE_TABLE}` +
+            `?id=eq.${encodeURIComponent(id)}`,
+            {
+                method: "PATCH",
+                headers: { Prefer: "return=minimal" },
+                body: JSON.stringify(record)
+            }
+        );
+
+        closeMediaEditModal();
+        await loadMedia();
+
+        alert("Judul, tanggal, dan jam kenangan berhasil diperbarui.");
+    } catch (error) {
+        console.error("Gagal mengedit kenangan:", error);
+
+        alert(
+            "Perubahan kenangan gagal disimpan.\n\n" +
+            error.message
+        );
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Simpan Perubahan";
+        }
+    }
+}
+
+
+/* 
+   7B. FORM UPLOAD DENGAN JUDUL DAN WAKTU PER FILE
+ */
+
+function ensureMediaUploadModal() {
+    let modal = $("mediaUploadModal");
+    if (modal) return modal;
+
+    modal = document.createElement("div");
+    modal.id = "mediaUploadModal";
+    modal.className = "modal hidden";
+
+    Object.assign(modal.style, {
+        position: "fixed",
+        inset: "0",
+        zIndex: "999980",
+        background: "rgba(0,0,0,.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "18px",
+        overflowY: "auto"
+    });
+
+    modal.innerHTML = `
+        <div
+            style="
+                width:100%;
+                max-width:650px;
+                max-height:90vh;
+                overflow-y:auto;
+                box-sizing:border-box;
+                background:#fffaf6;
+                color:#3e3531;
+                border-radius:16px;
+                padding:22px;
+                box-shadow:0 12px 40px rgba(0,0,0,.2);
+            "
+        >
+            <div style="
+                display:flex;
+                align-items:center;
+                justify-content:space-between;
+                gap:12px;
+                margin-bottom:8px;
+            ">
+                <h2 style="margin:0;font-size:21px">
+                    Atur Kenangan Sebelum Upload
+                </h2>
+
+                <button
+                    type="button"
+                    id="closeMediaUploadModal"
+                    aria-label="Tutup"
+                    style="
+                        border:0;
+                        background:transparent;
+                        font-size:28px;
+                        cursor:pointer;
+                    "
+                >&times;</button>
+            </div>
+
+            <p style="
+                font-size:13px;
+                color:#77685e;
+                line-height:1.6;
+                margin:0 0 18px;
+            ">
+                Atur judul serta tanggal dan jam untuk setiap file.
+                Informasi ini dapat diedit kembali setelah upload.
+            </p>
+
+            <form id="mediaUploadForm">
+                <div id="pendingMediaFields"></div>
+
+                <div style="
+                    display:flex;
+                    justify-content:flex-end;
+                    flex-wrap:wrap;
+                    gap:10px;
+                    margin-top:20px;
+                ">
+                    <button
+                        type="button"
+                        class="btn"
+                        id="cancelMediaUpload"
+                    >Batal</button>
+
+                    <button
+                        type="submit"
+                        class="btn"
+                        id="submitMediaUpload"
+                    >Upload Semua</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    $("closeMediaUploadModal").addEventListener(
+        "click",
+        closeMediaUploadModal
+    );
+
+    $("cancelMediaUpload").addEventListener(
+        "click",
+        closeMediaUploadModal
+    );
+
+    modal.addEventListener("click", function (event) {
+        if (event.target === modal) {
+            closeMediaUploadModal();
+        }
+    });
+
+    $("mediaUploadForm").addEventListener(
+        "submit",
+        submitPendingMediaUpload
+    );
+
+    return modal;
+}
+
+function openMediaUploadModal(files) {
+    pendingMediaFiles = Array.from(files || []);
+
+    if (!pendingMediaFiles.length) return;
+
+    const modal = ensureMediaUploadModal();
+    const container = $("pendingMediaFields");
+
+    if (!container) return;
+
+    container.innerHTML = pendingMediaFiles.map((file, index) => {
+        const defaultTitle = safeFileTitle(file.name);
+        const defaultDate = nowDateTimeLocal();
+
+        const isVideo = file.type.startsWith("video/");
+
+        return `
+            <section style="
+                border:1px solid #e5d8ce;
+                border-radius:12px;
+                padding:14px;
+                margin-bottom:14px;
+                background:#fff;
+            ">
+                <div style="
+                    font-size:12px;
+                    color:#77685e;
+                    overflow-wrap:anywhere;
+                    margin-bottom:12px;
+                ">
+                    ${isVideo ? "VIDEO" : "FOTO"}:
+                    ${esc(file.name)}
+                </div>
+
+                <label
+                    for="uploadTitle${index}"
+                    style="display:block;margin-bottom:6px"
+                >Judul kenangan</label>
+
+                <input
+                    type="text"
+                    id="uploadTitle${index}"
+                    name="uploadTitle${index}"
+                    value="${esc(defaultTitle)}"
+                    maxlength="200"
+                    required
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:11px;
+                        border:1px solid #d8c9bd;
+                        border-radius:9px;
+                        margin-bottom:14px;
+                    "
+                >
+
+                <label
+                    for="uploadTakenAt${index}"
+                    style="display:block;margin-bottom:6px"
+                >Tanggal dan jam kenangan</label>
+
+                <input
+                    type="datetime-local"
+                    id="uploadTakenAt${index}"
+                    name="uploadTakenAt${index}"
+                    value="${defaultDate}"
+                    required
+                    style="
+                        width:100%;
+                        box-sizing:border-box;
+                        padding:11px;
+                        border:1px solid #d8c9bd;
+                        border-radius:9px;
+                    "
+                >
+            </section>
+        `;
+    }).join("");
+
+    modal.classList.remove("hidden");
+}
+
+function closeMediaUploadModal() {
+    $("mediaUploadModal")?.classList.add("hidden");
+}
+
+async function submitPendingMediaUpload(event) {
+    event.preventDefault();
+
+    if (!pendingMediaFiles.length) {
+        closeMediaUploadModal();
+        return;
+    }
+
+    const uploadEntries = [];
+
+    for (let index = 0; index < pendingMediaFiles.length; index++) {
+        const file = pendingMediaFiles[index];
+
+        const title = $(`uploadTitle${index}`)?.value.trim() || "";
+        const dateTime = $(`uploadTakenAt${index}`)?.value || "";
+
+        if (!title) {
+            alert(`Judul file "${file.name}" harus diisi.`);
+            $(`uploadTitle${index}`)?.focus();
+            return;
+        }
+
+        if (!dateTime || Number.isNaN(new Date(dateTime).getTime())) {
+            alert(`Tanggal dan jam file "${file.name}" tidak valid.`);
+            $(`uploadTakenAt${index}`)?.focus();
+            return;
+        }
+
+        uploadEntries.push({
+            file,
+            title,
+            takenAt: new Date(dateTime).toISOString()
+        });
+    }
+
+    const button = $("submitMediaUpload");
+
+    if (button) {
+        button.disabled = true;
+        button.textContent = "Mengunggah...";
+    }
+
+    const cancelButton = $("cancelMediaUpload");
+    const closeButton = $("closeMediaUploadModal");
+
+    if (cancelButton) cancelButton.disabled = true;
+    if (closeButton) closeButton.disabled = true;
+
+    try {
+        await uploadMediaEntries(uploadEntries);
+    } finally {
+        if (button) {
+            button.disabled = false;
+            button.textContent = "Upload Semua";
+        }
+
+        if (cancelButton) cancelButton.disabled = false;
+        if (closeButton) closeButton.disabled = false;
+    }
+}
+
+
+/* 
+   7C. UPLOAD KE STORAGE DAN DATABASE
+ */
+
+if ($("mediaInput")) {
+    $("mediaInput").addEventListener("change", function () {
+        const files = Array.from(this.files || []);
+
+        if (files.length) {
+            openMediaUploadModal(files);
+        }
+
+        // Memungkinkan memilih file yang sama lagi.
+        this.value = "";
+    });
+}
+
+async function uploadMediaEntries(entries) {
+    const errors = [];
+    let successCount = 0;
+
+    for (const entry of entries) {
+        const file = entry.file;
+
+        const isImage = file.type.startsWith("image/");
+        const isVideo = file.type.startsWith("video/");
+
+        if (!isImage && !isVideo) {
+            errors.push(
+                `${file.name}: format file tidak dikenali browser.`
+            );
+            continue;
+        }
+
+        const originalName = file.name || "media";
+        const lastDot = originalName.lastIndexOf(".");
+
+        const extension = lastDot > 0
+            ? originalName.substring(lastDot).toLowerCase()
+            : "";
+
+        const baseName = lastDot > 0
+            ? originalName.substring(0, lastDot)
+            : originalName;
+
+        /*
+         * Nama objek Storage dibuat unik untuk mencegah tabrakan.
+         * Judul asli/yang kamu tentukan tetap disimpan di kolom title.
+         */
+        const safeBaseName = baseName
+            .replace(/\s+/g, "-")
+            .replace(/[^a-zA-Z0-9_-]/g, "")
+            .slice(0, 80);
+
+        const fileName =
+            `${Date.now()}-${Math.random().toString(36).slice(2)}-` +
+            `${safeBaseName || "media"}${extension}`;
+
+        const filePath = fileName;
+
+        try {
+            const uploadUrl =
+                `${SUPABASE_URL}/storage/v1/object/` +
+                `${SUPABASE_BUCKET}/` +
+                encodeURIComponent(filePath);
+
+            const uploadResponse = await fetch(uploadUrl, {
+                method: "POST",
+                headers: {
+                    apikey: SUPABASE_PUBLISHABLE_KEY,
+                    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+                    "x-upsert": "false",
+                    "Content-Type": file.type || "application/octet-stream"
+                },
+                body: file
+            });
+
+            let uploadData = null;
+
+            try {
+                uploadData = await uploadResponse.json();
+            } catch {
+                uploadData = null;
+            }
+
+            if (!uploadResponse.ok) {
+                throw new Error(
+                    uploadData?.message ||
+                    uploadData?.error ||
+                    `Upload gagal (${uploadResponse.status})`
+                );
+            }
+
+            const record = {
+                title: entry.title,
+                caption: "",
+                taken_at: entry.takenAt,
+                media_type: isVideo ? "video" : "image",
+                file_path: filePath
+            };
+
+            try {
+                await supabaseRequest(
+                    `/rest/v1/${SUPABASE_TABLE}`,
+                    {
+                        method: "POST",
+                        headers: { Prefer: "return=minimal" },
+                        body: JSON.stringify(record)
+                    }
+                );
+            } catch (databaseError) {
+                // Coba hapus objek jika penyimpanan data gagal.
+                try {
+                    await fetch(
+                        `${SUPABASE_URL}/storage/v1/object/` +
+                        `${SUPABASE_BUCKET}/${encodeURIComponent(filePath)}`,
+                        {
+                            method: "DELETE",
+                            headers: {
+                                apikey: SUPABASE_PUBLISHABLE_KEY,
+                                Authorization:
+                                    `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
+                            }
+                        }
+                    );
+                } catch (cleanupError) {
+                    console.error(
+                        "Pembersihan file gagal:",
+                        cleanupError
+                    );
+                }
+
+                throw databaseError;
+            }
+
+            successCount++;
+        } catch (error) {
+            console.error(`Gagal mengunggah ${file.name}:`, error);
+
+            errors.push(`${file.name}: ${error.message}`);
+        }
+    }
+
+    pendingMediaFiles = [];
+    closeMediaUploadModal();
+
+    await loadMedia();
+
+    if (successCount > 0) {
+        alert(`${successCount} file berhasil diunggah.`);
+    }
+
+    if (errors.length) {
+        alert(
+            "Beberapa file tidak berhasil diproses:\n\n" +
+            errors.join("\n")
+        );
+    }
+
+    if (successCount === 0 && errors.length === 0) {
+        alert("Tidak ada file yang berhasil diunggah.");
+    }
+}
+
+
+/* 
+   7D. PREVIEW BESAR FOTO
+ */
+
 function openMediaPreview(id) {
     const item = media.find(
         entry => String(entry.id) === String(id)
@@ -724,7 +1614,9 @@ function openMediaPreview(id) {
         return;
     }
 
-    const isVideo = String(item.media_type || "").startsWith("video");
+    const isVideo = String(item.media_type || "")
+        .toLowerCase()
+        .startsWith("video");
 
     if (isVideo) return;
 
@@ -735,7 +1627,7 @@ function openMediaPreview(id) {
         return;
     }
 
-    document.getElementById("mediaPreviewModal")?.remove();
+    $("mediaPreviewModal")?.remove();
 
     const modal = document.createElement("div");
     modal.id = "mediaPreviewModal";
@@ -814,7 +1706,7 @@ function openMediaPreview(id) {
             ${
                 item.taken_at
                     ? `<p style="color:#ccc;font-size:13px">
-                        ${esc(fmt(item.taken_at))}
+                        ${esc(fmtDateTime(item.taken_at))}
                     </p>`
                     : ""
             }
@@ -846,155 +1738,11 @@ function openMediaPreview(id) {
     document.addEventListener("keydown", handlePreviewKey);
 }
 
-/* Upload foto dan video */
-if ($("mediaInput")) {
-    $("mediaInput").addEventListener("change", async function () {
-        const files = Array.from(this.files || []);
-        if (!files.length) return;
 
-        await uploadMedia(files);
-        this.value = "";
-    });
-}
+/* 
+   7E. HAPUS FOTO / VIDEO
+ */
 
-async function uploadMedia(files) {
-    const input = $("mediaInput");
-    if (input) input.disabled = true;
-
-    let successCount = 0;
-    const errors = [];
-
-    try {
-        for (const file of files) {
-            if (
-                !file.type.startsWith("image/") &&
-                !file.type.startsWith("video/")
-            ) {
-                errors.push(`${file.name}: format tidak didukung.`);
-                continue;
-            }
-
-            const originalName = file.name || "media";
-            const lastDot = originalName.lastIndexOf(".");
-            const extension = lastDot > 0
-                ? originalName.substring(lastDot).toLowerCase()
-                : "";
-
-            const baseName = lastDot > 0
-                ? originalName.substring(0, lastDot)
-                : originalName;
-
-            const safeBaseName = baseName
-                .replace(/\s+/g, "-")
-                .replace(/[^a-zA-Z0-9_-]/g, "")
-                .slice(0, 80);
-
-            const fileName =
-                `${Date.now()}-${Math.random().toString(36).slice(2)}-` +
-                `${safeBaseName || "media"}${extension}`;
-
-            const filePath = fileName;
-
-            try {
-                const uploadUrl =
-                    `${SUPABASE_URL}/storage/v1/object/` +
-                    `${SUPABASE_BUCKET}/${encodeURIComponent(filePath)}`;
-
-                const uploadResponse = await fetch(uploadUrl, {
-                    method: "POST",
-                    headers: {
-                        apikey: SUPABASE_PUBLISHABLE_KEY,
-                        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-                        "x-upsert": "false",
-                        "Content-Type": file.type || "application/octet-stream"
-                    },
-                    body: file
-                });
-
-                let uploadData = null;
-
-                try {
-                    uploadData = await uploadResponse.json();
-                } catch {
-                    uploadData = null;
-                }
-
-                if (!uploadResponse.ok) {
-                    throw new Error(
-                        uploadData?.message ||
-                        uploadData?.error ||
-                        `Upload gagal (${uploadResponse.status})`
-                    );
-                }
-
-                const record = {
-                    title: file.name,
-                    caption: "",
-                    taken_at: null,
-                    media_type: file.type.startsWith("video/")
-                        ? "video"
-                        : "image",
-                    file_path: filePath
-                };
-
-                try {
-                    await supabaseRequest(
-                        `/rest/v1/${SUPABASE_TABLE}`,
-                        {
-                            method: "POST",
-                            headers: { Prefer: "return=minimal" },
-                            body: JSON.stringify(record)
-                        }
-                    );
-                } catch (databaseError) {
-                    // Hapus file Storage jika pencatatan database gagal.
-                    try {
-                        await fetch(
-                            `${SUPABASE_URL}/storage/v1/object/` +
-                            `${SUPABASE_BUCKET}/${encodeURIComponent(filePath)}`,
-                            {
-                                method: "DELETE",
-                                headers: {
-                                    apikey: SUPABASE_PUBLISHABLE_KEY,
-                                    Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`
-                                }
-                            }
-                        );
-                    } catch {
-                        // Tidak ada tindakan tambahan.
-                    }
-
-                    throw databaseError;
-                }
-
-                successCount++;
-            } catch (error) {
-                console.error(`Gagal mengunggah ${file.name}:`, error);
-                errors.push(`${file.name}: ${error.message}`);
-            }
-        }
-
-        await loadMedia();
-
-        if (successCount > 0) {
-            alert(`${successCount} file berhasil diunggah.`);
-        }
-
-        if (errors.length) {
-            alert(
-                "Beberapa file tidak berhasil diproses:\n\n" +
-                errors.join("\n")
-            );
-        }
-    } catch (error) {
-        console.error("Upload media gagal:", error);
-        alert("Upload gagal.\n\n" + error.message);
-    } finally {
-        if (input) input.disabled = false;
-    }
-}
-
-/* Hapus foto/video */
 async function deleteMedia(id) {
     const item = media.find(
         mediaItem => String(mediaItem.id) === String(id)
@@ -1029,12 +1777,14 @@ async function deleteMedia(id) {
             const details = await response.text();
 
             throw new Error(
-                `File gagal dihapus dari Storage: ${details || response.status}`
+                `File gagal dihapus dari Storage: ` +
+                `${details || response.status}`
             );
         }
 
         await supabaseRequest(
-            `/rest/v1/${SUPABASE_TABLE}?id=eq.${encodeURIComponent(id)}`,
+            `/rest/v1/${SUPABASE_TABLE}` +
+            `?id=eq.${encodeURIComponent(id)}`,
             {
                 method: "DELETE",
                 headers: { Prefer: "return=minimal" }
@@ -1045,6 +1795,7 @@ async function deleteMedia(id) {
         alert("Kenangan berhasil dihapus.");
     } catch (error) {
         console.error("Gagal menghapus media:", error);
+
         alert("Gagal menghapus kenangan.\n\n" + error.message);
     }
 }
@@ -1462,7 +2213,7 @@ async function deleteEvent(id) {
 
 
 /* 
-   11. MENUTUP MODAL
+   11. MENUTUP MODAL LAMA
  */
 
 document.querySelectorAll("[data-close-modal]").forEach(button => {
@@ -1485,6 +2236,9 @@ document.addEventListener("keydown", function (event) {
     document.querySelectorAll(".modal").forEach(modal => {
         modal.classList.add("hidden");
     });
+
+    closeMediaEditModal();
+    closeMediaUploadModal();
 });
 
 
@@ -1509,10 +2263,20 @@ if ($("privateCalendarButton")) {
    13. MULAI APLIKASI
  */
 
-document.addEventListener("DOMContentLoaded", function () {
+function initializeRuangKenangan() {
     if (sessionStorage.getItem("rk_login") === "yes") {
         showMemoryQuestion();
     } else {
         showLogin();
     }
-});
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener(
+        "DOMContentLoaded",
+        initializeRuangKenangan,
+        { once: true }
+    );
+} else {
+    initializeRuangKenangan();
+}
